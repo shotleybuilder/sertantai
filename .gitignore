@@ -1,0 +1,171 @@
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+
+# The directory Mix downloads your dependencies sources to.
+/deps/
+
+# Where 3rd-party dependencies like ExDoc output generated docs.
+/doc/
+
+# Ignore .fetch files in case you like to edit your project deps locally.
+/.fetch
+
+# If the VM crashes, it generates a dump, let's ignore it too.
+erl_crash.dump
+
+# Also ignore archive artifacts (built via "mix archive.build").
+*.ez
+
+# Temporary files, for example, from tests.
+/tmp/
+
+# Ignore package tarball (built via "mix hex.build").
+sertantai-*.tar
+
+# Ignore assets that are produced by build tools.
+/priv/static/assets/
+
+# Ignore digested assets cache.
+/priv/static/cache_manifest.json
+
+# In case you use Node.js/npm, you want to ignore these.
+npm-debug.log
+/assets/node_modules/
+
+# Environment Variables and Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+priv/cert/
+
+# Elixir Build and Dependencies
+/_build
+/cover
+/deps
+/doc
+/.fetch
+erl_crash.dump
+*.beam
+/config/*.secret.exs
+.elixir_ls/
+
+# Phoenix Framework
+/priv/static/assets/
+/priv/static/cache_manifest.json
+
+# Assets and Node.js
+/assets/node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log*
+.yarn-integrity
+
+# Database
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+/tmp/
+logs/
+
+# Testing
+/cover/
+.coverage/
+*.coverdata
+
+# Ash Framework
+.ash/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Compiled assets (if using webpack/esbuild)
+priv/static/js/
+priv/static/css/
+
+# Livebook and Jupyter notebooks (if using)
+*.livemd.secret
+
+# Docker (if using)
+.dockerignore
+docker-compose.override.yml
+
+# Local development certificates
+ssl/
+certs/
+
+# Mix release
+_build/
+rel/
+
+# Hex packages
+*.tar
+
+# If using Ecto migrations with timestamps, ignore auto-generated files
+priv/repo/structure.sql
+
+# Tidewave specific (if any local data)
+.tidewave/
+
+# Claude Code cache (if any)
+.claude_cache/
+
+# Local shell scripts (often contain secrets)
+scripts/*.local.sh
+
+# MacOS
+.AppleDouble
+.LSOverride
+Icon
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Windows
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk

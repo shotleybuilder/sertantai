@@ -1,12 +1,16 @@
 import Config
 
 # Configure your database
+# Use Supabase connection pooler for IPv4 connectivity
 config :sertantai, Sertantai.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  # database: "sertantai_dev",
+  username: "postgres.laqakhlqqmakacqgwrnh",  # postgres.{project-ref}
+  password: System.get_env("SUPABASE_PASSWORD"),
+  hostname: "aws-0-eu-west-2.pooler.supabase.com",  # Pooler hostname
   database: System.get_env("SUPABASE_DATABASE") || "postgres",
+  port: 6543,  # Connection pooling port
+  parameters: [pgbouncer: "true"],  # Required for pgbouncer
+  ssl: true,
+  ssl_opts: [verify: :verify_none],
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

@@ -13,6 +13,10 @@ defmodule SertantaiWeb.Router do
   pipeline :api do
     plug :accepts, ["json"]
   end
+  
+  pipeline :graphql do
+    plug :accepts, ["json"]
+  end
 
   scope "/", SertantaiWeb do
     pipe_through :browser
@@ -20,10 +24,18 @@ defmodule SertantaiWeb.Router do
     get "/", PageController, :home
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", SertantaiWeb do
-  #   pipe_through :api
-  # end
+  # GraphQL API
+  scope "/api" do
+    pipe_through :graphql
+    
+    forward "/graphql", Absinthe.Plug, schema: Sertantai.Schema
+    
+    if Mix.env() == :dev do
+      forward "/graphiql", Absinthe.Plug.GraphiQL, schema: Sertantai.Schema
+    end
+  end
+  
+  # JSON API endpoints will be defined by the resource directly
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:sertantai, :dev_routes) do

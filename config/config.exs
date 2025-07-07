@@ -8,7 +8,6 @@
 import Config
 
 config :ash,
-  allow_forbidden_field_for_relationships_by_default?: true,
   include_embedded_source_by_default?: false,
   show_keysets_for_all_actions?: false,
   default_page_type: :keyset,
@@ -17,6 +16,9 @@ config :ash,
   default_actions_require_atomic?: true,
   read_action_after_action_hooks_in_order?: true,
   bulk_actions_default_to_errors?: true
+
+config :ash_postgres,
+  custom_extensions: [{Ash.PostgresExtension, :uuid_ossp}]
 
 config :spark,
   formatter: [
@@ -44,7 +46,8 @@ config :spark,
 
 config :sertantai,
   ecto_repos: [Sertantai.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  ash_domains: [Sertantai.Domain]
 
 # Configures the endpoint
 config :sertantai, SertantaiWeb.Endpoint,

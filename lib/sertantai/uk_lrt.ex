@@ -1,0 +1,189 @@
+defmodule Sertantai.UkLrt do
+  @moduledoc """
+  UK LRT (Long Range Transport) Ash resource for managing transport records.
+  Provides filtering and selection capabilities for family and family_ii fields.
+  """
+  
+  use Ash.Resource,
+    domain: Sertantai.Domain,
+    data_layer: AshPostgres.DataLayer,
+    extensions: [AshGraphql.Resource, AshJsonApi.Resource]
+
+  postgres do
+    table "uk_lrt"
+    repo Sertantai.Repo
+  end
+
+  attributes do
+    uuid_primary_key :id, writable?: false
+    
+    attribute :family, :string do
+      allow_nil? true
+      description "Primary family classification"
+    end
+    
+    attribute :family_ii, :string do
+      allow_nil? true
+      description "Secondary family classification"
+    end
+    
+    attribute :name, :string do
+      allow_nil? true
+      description "Record name or identifier"
+    end
+    
+    attribute :md_description, :string do
+      allow_nil? true
+      description "Markdown description of the record"
+    end
+    
+    attribute :year, :integer do
+      allow_nil? true
+      description "Year associated with the record"
+    end
+    
+    attribute :number, :string do
+      allow_nil? true
+      description "Record number"
+    end
+    
+    attribute :live, :string do
+      allow_nil? true
+      description "Live status"
+    end
+    
+    attribute :type_desc, :string do
+      allow_nil? true
+      description "Type description"
+    end
+    
+    attribute :role, {:array, :string} do
+      allow_nil? true
+      description "Role information as array of strings"
+    end
+    
+    attribute :tags, {:array, :string} do
+      allow_nil? true
+      description "Tags as array of strings"
+    end
+    
+    attribute :created_at, :utc_datetime do
+      allow_nil? true
+      description "Creation timestamp"
+      writable? false
+    end
+  end
+
+  actions do
+    defaults [:read, :create, :update, :destroy]
+    
+    read :by_family do
+      description "Filter records by family field"
+      argument :family, :string, allow_nil?: false
+      filter expr(family == ^arg(:family))
+    end
+    
+    read :by_family_ii do
+      description "Filter records by family_ii field"
+      argument :family_ii, :string, allow_nil?: false
+      filter expr(family_ii == ^arg(:family_ii))
+    end
+    
+    read :by_families do
+      description "Filter records by both family fields"
+      argument :family, :string, allow_nil?: true
+      argument :family_ii, :string, allow_nil?: true
+      
+      filter expr(
+        if is_nil(^arg(:family)) do
+          true
+        else
+          family == ^arg(:family)
+        end and
+        if is_nil(^arg(:family_ii)) do
+          true
+        else
+          family_ii == ^arg(:family_ii)
+        end
+      )
+    end
+    
+    read :paginated do
+      description "Paginated read with optional filtering"
+      argument :family, :string, allow_nil?: true
+      argument :family_ii, :string, allow_nil?: true
+      argument :page_size, :integer, default: 20
+      
+      filter expr(
+        if is_nil(^arg(:family)) do
+          true
+        else
+          family == ^arg(:family)
+        end and
+        if is_nil(^arg(:family_ii)) do
+          true
+        else
+          family_ii == ^arg(:family_ii)
+        end
+      )
+      
+      pagination offset?: true, keyset?: true, default_limit: 20
+    end
+    
+    read :distinct_families do
+      description "Get distinct family values"
+      
+      prepare build(select: [:family], distinct: [:family])
+    end
+    
+    read :distinct_family_ii do
+      description "Get distinct family_ii values"
+      
+      prepare build(select: [:family_ii], distinct: [:family_ii])
+      filter expr(not is_nil(family_ii))
+    end
+  end
+
+
+  calculations do
+    calculate :display_name, :string, expr(coalesce(name, fragment("CONCAT('Record #', ?)", id))) do
+      description "Display name for the record"
+    end
+  end
+
+  # GraphQL configuration
+  graphql do
+    type :uk_lrt_record
+    
+    queries do
+      get :get_uk_lrt_record, :read
+      list :list_uk_lrt_records, :read
+      list :uk_lrt_by_family, :by_family
+      list :uk_lrt_by_family_ii, :by_family_ii
+      list :uk_lrt_by_families, :by_families
+      list :uk_lrt_paginated, :paginated
+      list :distinct_families, :distinct_families
+      list :distinct_family_ii, :distinct_family_ii
+    end
+    
+    mutations do
+      create :create_uk_lrt_record, :create
+      update :update_uk_lrt_record, :update
+      destroy :destroy_uk_lrt_record, :destroy
+    end
+  end
+
+  # JSON API configuration
+  json_api do
+    type "uk_lrt_record"
+    
+    routes do
+      base "/api/uk_lrt"
+      get :read
+      index :read
+      post :create
+      patch :update
+      delete :destroy
+    end
+  end
+end

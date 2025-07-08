@@ -16,6 +16,8 @@ defmodule Sertantai.Application do
       {Finch, name: Sertantai.Finch},
       # Start the sync worker for background operations
       Sertantai.Sync.SyncWorker,
+      # Start the rate limiter for API and sync throttling
+      Sertantai.Sync.RateLimiter,
       # Start to serve requests, typically the last entry
       SertantaiWeb.Endpoint
     ]

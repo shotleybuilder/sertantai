@@ -7,7 +7,7 @@ defmodule Sertantai.Sync.SyncService do
   require Logger
   require Ash.Query
   import Ash.Expr
-  alias Sertantai.Sync.{SyncConfiguration, SelectedRecord}
+  alias Sertantai.Sync.{SyncConfiguration, SelectedRecord, RateLimiter}
 
   @doc """
   Sync a configuration with its selected records to the external provider.
@@ -16,6 +16,7 @@ defmodule Sertantai.Sync.SyncService do
     Logger.info("Starting sync for configuration: #{sync_config_id}")
 
     with {:ok, sync_config} <- load_sync_configuration(sync_config_id),
+         {:ok, _remaining} <- check_rate_limits(sync_config),
          {:ok, credentials} <- decrypt_credentials(sync_config),
          {:ok, selected_records} <- load_selected_records(sync_config_id),
          {:ok, _result} <- sync_to_provider(sync_config.provider, selected_records, credentials) do
@@ -57,6 +58,18 @@ defmodule Sertantai.Sync.SyncService do
       {:ok, config} -> {:ok, config}
       {:error, %Ash.Error.Query.NotFound{}} -> {:error, :sync_config_not_found}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  defp check_rate_limits(sync_config) do
+    with {:ok, _remaining_sync} <- RateLimiter.check_sync_rate_limit(sync_config.user_id),
+         {:ok, remaining_api} <- RateLimiter.check_api_rate_limit(sync_config.provider, sync_config.user_id) do
+      {:ok, remaining_api}
+    else
+      {:error, :rate_limited} -> 
+        Logger.warning("Rate limit exceeded for sync configuration: #{sync_config.id}")
+        {:error, :rate_limited}
+      error -> error
     end
   end
 

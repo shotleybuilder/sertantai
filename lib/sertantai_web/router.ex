@@ -1,5 +1,6 @@
 defmodule SertantaiWeb.Router do
   use SertantaiWeb, :router
+  use AshAuthentication.Phoenix.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -8,20 +9,42 @@ defmodule SertantaiWeb.Router do
     plug :put_root_layout, html: {SertantaiWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :load_from_session
   end
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :load_from_bearer
   end
   
   pipeline :graphql do
     plug :accepts, ["json"]
   end
 
+  pipeline :require_authenticated_user do
+    plug :require_authenticated_user
+  end
+
   scope "/", SertantaiWeb do
     pipe_through :browser
 
     get "/", PageController, :home
+    
+    # Authentication routes
+    sign_in_route()
+    sign_out_route AuthController
+    auth_routes_for Sertantai.Accounts.User, to: AuthController
+    reset_route []
+  end
+
+  # Protected routes
+  scope "/", SertantaiWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live "/dashboard", DashboardLive
+    live "/sync-configs", SyncConfigLive.Index
+    live "/sync-configs/new", SyncConfigLive.New
+    live "/sync-configs/:id/edit", SyncConfigLive.Edit
     live "/records", RecordSelectionLive, :index
   end
 

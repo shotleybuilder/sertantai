@@ -70,11 +70,23 @@ defmodule Sertantai.Sync.SyncConfiguration do
     update :update do
       accept [:name, :is_active, :sync_frequency]
       argument :credentials, :map
+      require_atomic? false
 
       change before_action(fn changeset, _context ->
         case changeset.arguments[:credentials] do
           nil -> changeset
-          creds -> encrypt_and_store_credentials(changeset, creds)
+          creds -> 
+            # Generate a random IV for encryption
+            iv = :crypto.strong_rand_bytes(16)
+            # Get encryption key from application config
+            encryption_key = get_encryption_key()
+            # Encrypt the credentials JSON
+            credentials_json = Jason.encode!(creds)
+            encrypted_data = :crypto.crypto_one_time(:aes_256_cbc, encryption_key, iv, credentials_json, true)
+            
+            changeset
+            |> Ash.Changeset.force_change_attribute(:encrypted_credentials, Base.encode64(encrypted_data))
+            |> Ash.Changeset.force_change_attribute(:credentials_iv, Base.encode64(iv))
         end
       end)
     end

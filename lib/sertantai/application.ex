@@ -14,8 +14,8 @@ defmodule Sertantai.Application do
       {Phoenix.PubSub, name: Sertantai.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Sertantai.Finch},
-      # Start a worker by calling: Sertantai.Worker.start_link(arg)
-      # {Sertantai.Worker, arg},
+      # Start the sync worker for background operations
+      Sertantai.Sync.SyncWorker,
       # Start to serve requests, typically the last entry
       SertantaiWeb.Endpoint
     ]

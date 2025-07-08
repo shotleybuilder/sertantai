@@ -81,12 +81,14 @@ defmodule Sertantai.UkLrt do
       description "Filter records by family field"
       argument :family, :string, allow_nil?: false
       filter expr(family == ^arg(:family))
+      pagination offset?: true, keyset?: true, default_limit: 20
     end
     
     read :by_family_ii do
       description "Filter records by family_ii field"
       argument :family_ii, :string, allow_nil?: false
       filter expr(family_ii == ^arg(:family_ii))
+      pagination offset?: true, keyset?: true, default_limit: 20
     end
     
     read :by_families do
@@ -141,6 +143,33 @@ defmodule Sertantai.UkLrt do
       
       prepare build(select: [:family_ii], distinct: [:family_ii])
       filter expr(not is_nil(family_ii))
+    end
+    
+    read :for_sync do
+      description "Get records formatted for sync operations"
+      argument :record_ids, {:array, :string}, allow_nil?: false
+      argument :format, :string, default: "standard"
+      
+      filter expr(id in ^arg(:record_ids))
+      
+      prepare build(
+        select: [
+          :id, :name, :family, :family_ii, :year, :number, 
+          :live, :type_desc, :md_description, :tags, :role, :created_at
+        ]
+      )
+    end
+    
+    read :sync_summary do
+      description "Get summary statistics for sync preparation"
+      argument :record_ids, {:array, :string}, allow_nil?: false
+      
+      filter expr(id in ^arg(:record_ids))
+      
+      prepare build(
+        select: [:id, :family, :family_ii, :year, :live],
+        load: [:display_name]
+      )
     end
   end
 

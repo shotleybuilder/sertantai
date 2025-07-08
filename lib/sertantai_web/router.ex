@@ -22,6 +22,7 @@ defmodule SertantaiWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    live "/records", RecordSelectionLive, :index
   end
 
   # GraphQL API

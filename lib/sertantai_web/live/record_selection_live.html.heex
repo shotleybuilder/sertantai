@@ -1,0 +1,332 @@
+<div class="min-h-screen bg-gray-50" phx-hook="DownloadFile" id="record-selection-container">
+  <!-- Header -->
+  <div class="bg-white shadow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center py-6">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">UK LRT Record Selection</h1>
+          <p class="mt-1 text-sm text-gray-500">
+            Filter and select UK Long Range Transport records for export
+          </p>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="text-sm text-gray-500">
+            Total Records: <span class="font-medium"><%= @total_count %></span>
+          </div>
+          <div class="text-sm text-blue-600">
+            Selected: <span class="font-medium"><%= selected_count(@selected_records) %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg shadow mb-6">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <button 
+          type="button" 
+          phx-click="toggle_filters"
+          class="flex items-center text-lg font-medium text-gray-900 hover:text-blue-600"
+        >
+          <svg class={"w-5 h-5 mr-2 transform transition-transform #{if @show_filters, do: "rotate-90", else: ""}"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+          Filters
+        </button>
+      </div>
+      
+      <div class={"px-6 py-4 #{unless @show_filters, do: "hidden"}"}>
+        <form phx-change="filter_change" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Family Filter -->
+          <div>
+            <label for="family" class="block text-sm font-medium text-gray-700 mb-2">
+              Family Category
+            </label>
+            <select 
+              name="filters[family]" 
+              id="family"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              value={@filters["family"] || ""}
+            >
+              <option value="">All Families</option>
+              <%= for family <- @family_options do %>
+                <option value={family}><%= family %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <!-- Family II Filter -->
+          <div>
+            <label for="family_ii" class="block text-sm font-medium text-gray-700 mb-2">
+              Secondary Family
+            </label>
+            <select 
+              name="filters[family_ii]" 
+              id="family_ii"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              value={@filters["family_ii"] || ""}
+            >
+              <option value="">All Secondary Families</option>
+              <%= for family_ii <- @family_ii_options do %>
+                <option value={family_ii}><%= family_ii %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-end space-x-2">
+            <button 
+              type="button"
+              phx-click="clear_all_selections"
+              class="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 border border-red-300 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              Clear Selections
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Selection Summary -->
+    <%= if selected_count(@selected_records) > 0 do %>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+            </svg>
+            <span class="text-sm font-medium text-blue-900">
+              <%= selected_count(@selected_records) %> of <%= @max_selections %> records selected
+            </span>
+          </div>
+          <div class="flex space-x-2">
+            <button 
+              type="button"
+              phx-click="export_csv"
+              class="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Export CSV
+            </button>
+            <button 
+              type="button"
+              phx-click="export_json"
+              class="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Export JSON
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Loading Indicator -->
+    <%= if @loading do %>
+      <div class="bg-white rounded-lg shadow p-8 text-center">
+        <div class="inline-flex items-center">
+          <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Loading records...
+        </div>
+      </div>
+    <% else %>
+      <!-- Results Table -->
+      <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Table Controls -->
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <button 
+                type="button"
+                phx-click="select_all_page"
+                class="text-sm font-medium text-blue-600 hover:text-blue-800"
+              >
+                Select All on Page
+              </button>
+              <button 
+                type="button"
+                phx-click="deselect_all_page"
+                class="text-sm font-medium text-gray-600 hover:text-gray-800"
+              >
+                Deselect All on Page
+              </button>
+            </div>
+            <div class="text-sm text-gray-500">
+              Showing <%= length(@records) %> of <%= @total_count %> records
+            </div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Select
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Family
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Year
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <%= for record <- @records do %>
+                <tr class={"hover:bg-gray-50 #{if is_selected?(@selected_records, record.id), do: "bg-blue-50"}"}>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <input 
+                      type="checkbox" 
+                      phx-click="toggle_record"
+                      phx-value-record_id={record.id}
+                      checked={is_selected?(@selected_records, record.id)}
+                      class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">
+                      <%= record.name %>
+                    </div>
+                    <%= if record.md_description do %>
+                      <div class="text-sm text-gray-500 truncate max-w-xs">
+                        <%= String.slice(record.md_description, 0, 100) %><%= if String.length(record.md_description || "") > 100, do: "..." %>
+                      </div>
+                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                      <%= record.family %>
+                    </div>
+                    <%= if record.family_ii do %>
+                      <div class="text-sm text-gray-500">
+                        <%= record.family_ii %>
+                      </div>
+                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <%= format_year(record.year) %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <%= case format_status(record.live) do %>
+                      <% {:ok, status} -> %>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <%= status %>
+                        </span>
+                      <% {:error, status} -> %>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          <%= status %>
+                        </span>
+                      <% {:warning, status} -> %>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <%= status %>
+                        </span>
+                      <% {:neutral, status} -> %>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <%= status %>
+                        </span>
+                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <%= record.type_desc %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <%= if @total_count > @page_size do %>
+          <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+              <%= if @current_page > 1 do %>
+                <button 
+                  phx-click="page_change" 
+                  phx-value-page={@current_page - 1}
+                  class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+              <% end %>
+              <%= if @current_page < total_pages(@total_count, @page_size) do %>
+                <button 
+                  phx-click="page_change" 
+                  phx-value-page={@current_page + 1}
+                  class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Next
+                </button>
+              <% end %>
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm text-gray-700">
+                  Showing
+                  <span class="font-medium"><%= (@current_page - 1) * @page_size + 1 %></span>
+                  to
+                  <span class="font-medium"><%= min(@current_page * @page_size, @total_count) %></span>
+                  of
+                  <span class="font-medium"><%= @total_count %></span>
+                  results
+                </p>
+              </div>
+              <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <%= if @current_page > 1 do %>
+                    <button 
+                      phx-click="page_change" 
+                      phx-value-page={@current_page - 1}
+                      class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    >
+                      <span class="sr-only">Previous</span>
+                      <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  <% end %>
+                  
+                  <%= for page <- max(1, @current_page - 2)..min(total_pages(@total_count, @page_size), @current_page + 2) do %>
+                    <button 
+                      phx-click="page_change" 
+                      phx-value-page={page}
+                      class={"relative inline-flex items-center px-4 py-2 border text-sm font-medium #{if page == @current_page, do: "z-10 bg-blue-50 border-blue-500 text-blue-600", else: "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"}"}
+                    >
+                      <%= page %>
+                    </button>
+                  <% end %>
+                  
+                  <%= if @current_page < total_pages(@total_count, @page_size) do %>
+                    <button 
+                      phx-click="page_change" 
+                      phx-value-page={@current_page + 1}
+                      class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    >
+                      <span class="sr-only">Next</span>
+                      <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  <% end %>
+                </nav>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

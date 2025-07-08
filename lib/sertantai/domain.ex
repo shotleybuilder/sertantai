@@ -9,6 +9,7 @@ defmodule Sertantai.Domain do
 
   resources do
     resource Sertantai.UkLrt
+    resource Sertantai.SyncConfig
   end
 
   # GraphQL configuration

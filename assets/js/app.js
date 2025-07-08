@@ -22,8 +22,27 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+// Download hook for file exports
+let Hooks = {}
+Hooks.DownloadFile = {
+  mounted() {
+    this.handleEvent("download-file", ({filename, content, mime_type}) => {
+      const blob = new Blob([content], { type: mime_type })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    })
+  }
+}
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: Hooks,
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken}
 })

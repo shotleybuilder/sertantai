@@ -51,7 +51,7 @@ config :sertantai,
   ecto_repos: [Sertantai.Repo],
   generators: [timestamp_type: :utc_datetime],
   ash_domains: [Sertantai.Domain, Sertantai.Accounts, Sertantai.Sync],
-  token_signing_secret: "your-secret-key-here-change-in-production"
+  token_signing_secret: "j4ExRkxaAgc9P2MPrP6O0fd8bIr2LyTaRXL6V4BmlU7dGfWUh6RMufj4beJLBxuE"
 
 # Configures the endpoint
 config :sertantai, SertantaiWeb.Endpoint,

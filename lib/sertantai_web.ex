@@ -93,6 +93,9 @@ defmodule SertantaiWeb do
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS
 
+      # Authentication helpers - current_user will be available in assigns
+      # AshAuthentication.Phoenix provides current_user in socket/conn assigns
+
       # Routes generation with the ~p sigil
       unquote(verified_routes())
     end

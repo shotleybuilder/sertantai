@@ -50,7 +50,7 @@ config :spark,
 config :sertantai,
   ecto_repos: [Sertantai.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Sertantai.Domain, Sertantai.Accounts],
+  ash_domains: [Sertantai.Domain, Sertantai.Accounts, Sertantai.Sync],
   token_signing_secret: "your-secret-key-here-change-in-production"
 
 # Configures the endpoint

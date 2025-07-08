@@ -72,9 +72,9 @@ defmodule Sertantai.Accounts.User do
     end
   end
 
-  # Note: Relationships to sync resources will be added in Phase 2
-  # relationships do
-  #   has_many :sync_configurations, Sertantai.Sync.SyncConfiguration
-  #   has_many :selected_records, Sertantai.Sync.SelectedRecord
-  # end
+  # Relationships to sync resources (Phase 2)
+  relationships do
+    has_many :sync_configurations, Sertantai.Sync.SyncConfiguration
+    has_many :selected_records, Sertantai.Sync.SelectedRecord
+  end
 end

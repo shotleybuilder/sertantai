@@ -405,12 +405,4 @@ defmodule SertantaiWeb.RecordSelectionLive do
     }
   end
 
-  # Selection limit helpers
-  defp at_selection_limit?(socket) do
-    MapSet.size(socket.assigns.selected_records) >= socket.assigns.max_selections
-  end
-
-  defp remaining_selections(socket) do
-    socket.assigns.max_selections - MapSet.size(socket.assigns.selected_records)
-  end
 end

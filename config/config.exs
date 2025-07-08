@@ -20,6 +20,9 @@ config :ash,
 config :ash_postgres,
   custom_extensions: [{Ash.PostgresExtension, :uuid_ossp}]
 
+config :sertantai, Sertantai.Repo,
+  extensions: [AshPostgres.Extension]
+
 config :spark,
   formatter: [
     remove_parens?: true,
@@ -47,7 +50,8 @@ config :spark,
 config :sertantai,
   ecto_repos: [Sertantai.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Sertantai.Domain]
+  ash_domains: [Sertantai.Domain, Sertantai.Accounts],
+  token_signing_secret: "your-secret-key-here-change-in-production"
 
 # Configures the endpoint
 config :sertantai, SertantaiWeb.Endpoint,

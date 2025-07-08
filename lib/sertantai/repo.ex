@@ -5,4 +5,8 @@ defmodule Sertantai.Repo do
     # Add your extensions here if needed
     ["ash-functions", "uuid-ossp"]
   end
+
+  def min_pg_version do
+    %Version{major: 16, minor: 0, patch: 0}
+  end
 end

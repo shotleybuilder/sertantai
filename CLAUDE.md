@@ -19,10 +19,34 @@ This is a Phoenix/Elixir web application named "Sertantai" that uses the Ash fra
 ## Common Commands
 
 ### Development Setup
+
+#### Using Supabase (Default)
 ```bash
-mix setup                    # Full setup: deps, database, assets
+source .env                 # Load Supabase environment variables
+mix setup                   # Full setup: deps, database, assets
 mix phx.server              # Start development server
 iex -S mix phx.server       # Start server in interactive shell
+```
+
+#### Using Local PostgreSQL
+```bash
+./scripts/start_local_dev.sh  # Start local PostgreSQL with Docker
+source .env.local            # Load local environment variables
+mix ecto.create              # Create local database
+mix ecto.migrate             # Run migrations
+mix run priv/repo/seeds.exs  # Seed with test data
+mix phx.server               # Start development server
+```
+
+#### Switch Between Databases
+```bash
+# To use local database:
+export USE_LOCAL_DB=true
+source .env.local
+
+# To use Supabase:
+unset USE_LOCAL_DB
+source .env
 ```
 
 ### Database Operations

@@ -1,19 +1,36 @@
 import Config
 
 # Configure your database
-# Use Supabase connection pooler for IPv4 connectivity
-config :sertantai, Sertantai.Repo,
-  username: "postgres.laqakhlqqmakacqgwrnh",  # postgres.{project-ref}
-  password: System.get_env("SUPABASE_PASSWORD"),
-  hostname: "aws-0-eu-west-2.pooler.supabase.com",  # Pooler hostname
-  database: System.get_env("SUPABASE_DATABASE") || "postgres",
-  port: 6543,  # Connection pooling port
-  parameters: [pgbouncer: "true"],  # Required for pgbouncer
-  ssl: true,
-  ssl_opts: [verify: :verify_none],
-  stacktrace: true,
-  show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+# Support both local PostgreSQL and Supabase based on environment variable
+database_config = if System.get_env("USE_LOCAL_DB") == "true" do
+  [
+    username: System.get_env("DB_USERNAME") || "postgres",
+    password: System.get_env("DB_PASSWORD") || "postgres",
+    hostname: System.get_env("DB_HOSTNAME") || "localhost",
+    database: System.get_env("DB_NAME") || "sertantai_dev",
+    port: String.to_integer(System.get_env("DB_PORT") || "5432"),
+    stacktrace: true,
+    show_sensitive_data_on_connection_error: true,
+    pool_size: 10
+  ]
+else
+  # Use Supabase connection pooler for IPv4 connectivity
+  [
+    username: "postgres.laqakhlqqmakacqgwrnh",  # postgres.{project-ref}
+    password: System.get_env("SUPABASE_PASSWORD"),
+    hostname: "aws-0-eu-west-2.pooler.supabase.com",  # Pooler hostname
+    database: System.get_env("SUPABASE_DATABASE") || "postgres",
+    port: 6543,  # Connection pooling port
+    parameters: [pgbouncer: "true"],  # Required for pgbouncer
+    ssl: true,
+    ssl_opts: [verify: :verify_none],
+    stacktrace: true,
+    show_sensitive_data_on_connection_error: true,
+    pool_size: 10
+  ]
+end
+
+config :sertantai, Sertantai.Repo, database_config
 
 # For development, we disable any cache and enable
 # debugging and code reloading.

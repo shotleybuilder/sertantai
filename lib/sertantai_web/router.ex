@@ -31,6 +31,11 @@ defmodule SertantaiWeb.Router do
     get "/", PageController, :home
     
     # Authentication routes
+    live "/login", AuthLive, :login
+    live "/register", AuthLive, :register
+    live "/reset-password", AuthLive, :reset_password
+    
+    # Keep existing Ash authentication routes for API/fallback
     sign_in_route()
     sign_out_route AuthController
     auth_routes_for Sertantai.Accounts.User, to: AuthController
@@ -42,6 +47,8 @@ defmodule SertantaiWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live "/dashboard", DashboardLive
+    live "/profile", AuthLive, :profile
+    live "/change-password", AuthLive, :change_password
     live "/sync-configs", SyncConfigLive.Index
     live "/sync-configs/new", SyncConfigLive.New
     live "/sync-configs/:id/edit", SyncConfigLive.Edit

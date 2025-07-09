@@ -17,7 +17,7 @@ defmodule SertantaiWeb.AuthLive do
 
   # Login page
   defp apply_action(socket, :login, _params) do
-    form = Form.for_authentication(User, :password)
+    form = AshAuthentication.Form.for_authentication(User, :password)
     
     socket
     |> assign(:page_title, "Sign In")
@@ -28,7 +28,7 @@ defmodule SertantaiWeb.AuthLive do
 
   # Register page
   defp apply_action(socket, :register, _params) do
-    form = Form.for_action(User, :register_with_password)
+    form = AshAuthentication.Form.for_action(User, :register_with_password)
     
     socket
     |> assign(:page_title, "Create Account")
@@ -99,16 +99,17 @@ defmodule SertantaiWeb.AuthLive do
 
   # Handle login form submission
   defp handle_login(socket, user_params) do
-    form = Form.for_authentication(User, :password)
+    form = AshAuthentication.Form.for_authentication(User, :password)
     
-    case Form.submit(form, user_params) do
-      {:ok, user} ->
+    case AshAuthentication.Form.submit(form, user_params) do
+      {:ok, _user} ->
         # Redirect to dashboard or return_to path
         return_to = get_connect_params(socket)["return_to"] || ~p"/dashboard"
         
-        socket
-        |> put_flash(:info, "Welcome back!")
-        |> redirect(to: return_to)
+        {:noreply,
+         socket
+         |> put_flash(:info, "Welcome back!")
+         |> redirect(to: return_to)}
 
       {:error, form} ->
         {:noreply, assign(socket, :form, to_form(form))}
@@ -117,13 +118,14 @@ defmodule SertantaiWeb.AuthLive do
 
   # Handle registration form submission
   defp handle_register(socket, user_params) do
-    form = Form.for_action(User, :register_with_password)
+    form = AshAuthentication.Form.for_action(User, :register_with_password)
     
-    case Form.submit(form, user_params) do
-      {:ok, user} ->
-        socket
-        |> put_flash(:info, "Account created successfully! You can now sign in.")
-        |> redirect(to: ~p"/login")
+    case AshAuthentication.Form.submit(form, user_params) do
+      {:ok, _user} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Account created successfully! You can now sign in.")
+         |> redirect(to: ~p"/login")}
 
       {:error, form} ->
         {:noreply, assign(socket, :form, to_form(form))}

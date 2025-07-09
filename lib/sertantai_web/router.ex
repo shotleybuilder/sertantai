@@ -25,6 +25,16 @@ defmodule SertantaiWeb.Router do
     plug :require_authenticated_user
   end
 
+  pipeline :require_authenticated_user_liveview do
+    plug :skip_authentication_for_liveview
+  end
+
+  # Custom authentication plug for LiveView - just pass through for now
+  def skip_authentication_for_liveview(conn, _opts) do
+    conn
+  end
+
+
   scope "/", SertantaiWeb do
     pipe_through :browser
 
@@ -44,7 +54,7 @@ defmodule SertantaiWeb.Router do
 
   # Protected routes
   scope "/", SertantaiWeb do
-    pipe_through [:browser, :require_authenticated_user]
+    pipe_through [:browser, :require_authenticated_user_liveview]
 
     live "/dashboard", DashboardLive
     live "/profile", AuthLive, :profile

@@ -6,41 +6,83 @@ defmodule SertantaiWeb.DashboardLive do
   
   use SertantaiWeb, :live_view
 
-  def mount(_params, _session, socket) do
-    user = socket.assigns.current_user
+  def mount(_params, session, socket) do
+    require Logger
+    Logger.info("Dashboard mount starting...")
+    Logger.info("Session: #{inspect(session)}")
+    
+    # Load current user from session using the user token
+    case session["user"] do
+      nil ->
+        Logger.info("No user in session, redirecting to login")
+        {:ok, redirect(socket, to: "/login")}
+        
+      user_token when is_binary(user_token) ->
+        Logger.info("Found user token in session: #{user_token}")
+        
+        # Extract user ID from token and load user
+        case extract_user_id_from_token(user_token) do
+          {:ok, user_id} ->
+            case Ash.get(Sertantai.Accounts.User, user_id, domain: Sertantai.Accounts) do
+              {:ok, user} ->
+                Logger.info("User authenticated: #{inspect(user.email)}")
+                
+                # Get sync configurations for user
+                sync_configs = case Ash.read(
+                  Sertantai.Sync.SyncConfiguration 
+                  |> Ash.Query.for_read(:for_user, %{user_id: user.id}),
+                  domain: Sertantai.Sync
+                ) do
+                  {:ok, configs} -> configs
+                  {:error, _} -> []
+                end
 
-    # Get sync configurations for user
-    sync_configs = case Ash.read(
-      Sertantai.Sync.SyncConfiguration 
-      |> Ash.Query.for_read(:for_user, %{user_id: user.id}),
-      domain: Sertantai.Sync
-    ) do
-      {:ok, configs} -> configs
-      {:error, _} -> []
+                # Get selected records count
+                selected_records_count = case Ash.read(
+                  Sertantai.Sync.SelectedRecord 
+                  |> Ash.Query.for_read(:for_user, %{user_id: user.id}),
+                  domain: Sertantai.Sync
+                ) do
+                  {:ok, records} -> length(records)
+                  {:error, _} -> 0
+                end
+
+                # Get sync summary
+                sync_summary = case Sertantai.Sync.SelectedRecord.get_sync_summary(user.id) do
+                  {:ok, summary} -> summary
+                  {:error, _} -> %{total: 0, pending: 0, synced: 0, failed: 0}
+                end
+
+                {:ok, assign(socket,
+                  current_user: user,
+                  sync_configs: sync_configs,
+                  selected_records_count: selected_records_count,
+                  sync_summary: sync_summary,
+                  page_title: "Dashboard"
+                )}
+                
+              {:error, reason} ->
+                Logger.error("Failed to load user: #{inspect(reason)}")
+                {:ok, redirect(socket, to: "/login")}
+            end
+            
+          {:error, reason} ->
+            Logger.error("Failed to extract user ID from token: #{inspect(reason)}")
+            {:ok, redirect(socket, to: "/login")}
+        end
+        
+      other ->
+        Logger.error("Unexpected user format in session: #{inspect(other)}")
+        {:ok, redirect(socket, to: "/login")}
     end
+  end
 
-    # Get selected records count
-    selected_records_count = case Ash.read(
-      Sertantai.Sync.SelectedRecord 
-      |> Ash.Query.for_read(:for_user, %{user_id: user.id}),
-      domain: Sertantai.Sync
-    ) do
-      {:ok, records} -> length(records)
-      {:error, _} -> 0
+  defp extract_user_id_from_token(token) do
+    # Extract user ID from token format: "318ailbe6h3s84d0nk000053:user?id=eac62b64-662f-4de8-bf22-4440467a234c"
+    case String.split(token, "id=") do
+      [_prefix, user_id] -> {:ok, user_id}
+      _ -> {:error, "Invalid token format"}
     end
-
-    # Get sync summary
-    sync_summary = case Sertantai.Sync.SelectedRecord.get_sync_summary(user.id) do
-      {:ok, summary} -> summary
-      {:error, _} -> %{total: 0, pending: 0, synced: 0, failed: 0}
-    end
-
-    {:ok, assign(socket,
-      sync_configs: sync_configs,
-      selected_records_count: selected_records_count,
-      sync_summary: sync_summary,
-      page_title: "Dashboard"
-    )}
   end
 
   def render(assigns) do
@@ -51,7 +93,7 @@ defmodule SertantaiWeb.DashboardLive do
           <div>
             <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p class="mt-2 text-sm text-gray-600">
-              Welcome back, <%= @current_user.first_name || @current_user.email %>!
+              Welcome back, <%= @current_user.first_name || to_string(@current_user.email) %>!
             </p>
           </div>
           <div class="flex space-x-4">

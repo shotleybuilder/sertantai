@@ -124,3 +124,7 @@ mix esbuild sertantai       # Build JavaScript with ESBuild
 - Telemetry and metrics configured
 - Swoosh for email handling (local adapter in development)
 - Bandit as the HTTP adapter
+- Using Supabase (for production)
+- Using Local Docker PostgreSQL (for development)
+- Switch Between Databases
+- Using model context protocol (mcp) server tidewave: /home/jason/mcp-proxy http://localhost:4000/tidewave/mcp

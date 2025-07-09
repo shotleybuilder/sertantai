@@ -18,6 +18,7 @@ defmodule SertantaiWeb.AuthControllerTest do
   describe "authentication success" do
     test "redirects to dashboard on successful authentication", %{conn: conn, user: user} do
       # Test the success callback
+      conn = conn |> init_test_session(%{})
       case SertantaiWeb.AuthController.success(conn, :sign_in, user, nil) do
         %Plug.Conn{} = result_conn ->
           # Should redirect to dashboard
@@ -32,7 +33,7 @@ defmodule SertantaiWeb.AuthControllerTest do
 
     test "redirects to return_to path when set", %{conn: conn, user: user} do
       # Set a return_to path in session
-      conn_with_return = conn |> put_session(:return_to, "/sync-configs")
+      conn_with_return = conn |> init_test_session(%{}) |> put_session(:return_to, "/sync-configs")
       
       case SertantaiWeb.AuthController.success(conn_with_return, :sign_in, user, nil) do
         %Plug.Conn{} = result_conn ->
@@ -48,6 +49,7 @@ defmodule SertantaiWeb.AuthControllerTest do
 
   describe "authentication failure" do
     test "redirects to home page with error flash", %{conn: conn} do
+      conn = conn |> init_test_session(%{}) |> fetch_flash()
       case SertantaiWeb.AuthController.failure(conn, :sign_in, :invalid_credentials) do
         %Plug.Conn{} = result_conn ->
           # Should redirect to home page
@@ -64,6 +66,7 @@ defmodule SertantaiWeb.AuthControllerTest do
     test "clears session and redirects", %{conn: conn, user: user} do
       # Set up authenticated connection
       authenticated_conn = conn
+      |> init_test_session(%{})
       |> assign(:current_user, user)
       |> put_session(:user_id, user.id)
 
@@ -81,6 +84,7 @@ defmodule SertantaiWeb.AuthControllerTest do
     test "respects return_to path on sign out", %{conn: conn, user: user} do
       # Set up authenticated connection with return_to
       authenticated_conn = conn
+      |> init_test_session(%{})
       |> assign(:current_user, user)
       |> put_session(:user_id, user.id)
       |> put_session(:return_to, "/custom-page")

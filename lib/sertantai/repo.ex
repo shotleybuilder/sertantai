@@ -3,7 +3,7 @@ defmodule Sertantai.Repo do
 
   def installed_extensions do
     # Add your extensions here if needed
-    ["ash-functions", "uuid-ossp"]
+    ["ash-functions", "uuid-ossp", "citext"]
   end
 
   def min_pg_version do

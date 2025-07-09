@@ -5,10 +5,15 @@ defmodule SertantaiWeb.AuthLive do
   use SertantaiWeb, :live_view
 
   alias Sertantai.Accounts.User
-  alias AshAuthentication.Form
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :page_title, "Authentication")}
+    # Store return_to from connect_params if available
+    return_to = get_connect_params(socket)["return_to"] || ~p"/dashboard"
+    
+    {:ok, 
+     socket
+     |> assign(:page_title, "Authentication")
+     |> assign(:return_to, return_to)}
   end
 
   def handle_params(params, _uri, socket) do
@@ -17,7 +22,7 @@ defmodule SertantaiWeb.AuthLive do
 
   # Login page
   defp apply_action(socket, :login, _params) do
-    form = AshAuthentication.Form.for_authentication(User, :password)
+    form = AshPhoenix.Form.for_action(User, :sign_in_with_password, domain: Sertantai.Accounts)
     
     socket
     |> assign(:page_title, "Sign In")
@@ -28,7 +33,7 @@ defmodule SertantaiWeb.AuthLive do
 
   # Register page
   defp apply_action(socket, :register, _params) do
-    form = AshAuthentication.Form.for_action(User, :register_with_password)
+    form = AshPhoenix.Form.for_action(User, :register_with_password, domain: Sertantai.Accounts)
     
     socket
     |> assign(:page_title, "Create Account")
@@ -39,7 +44,7 @@ defmodule SertantaiWeb.AuthLive do
 
   # Reset password page
   defp apply_action(socket, :reset_password, _params) do
-    form = Form.for_action(User, :request_password_reset)
+    form = AshPhoenix.Form.for_action(User, :request_password_reset)
     
     socket
     |> assign(:page_title, "Reset Password")
@@ -53,7 +58,7 @@ defmodule SertantaiWeb.AuthLive do
     current_user = socket.assigns[:current_user]
     
     if current_user do
-      form = Form.for_action(User, :update, current_user)
+      form = AshPhoenix.Form.for_action(User, :update, current_user)
       
       socket
       |> assign(:page_title, "Profile")
@@ -72,7 +77,7 @@ defmodule SertantaiWeb.AuthLive do
     current_user = socket.assigns[:current_user]
     
     if current_user do
-      form = Form.for_action(User, :change_password, current_user)
+      form = AshPhoenix.Form.for_action(User, :change_password, current_user)
       
       socket
       |> assign(:page_title, "Change Password")
@@ -88,6 +93,9 @@ defmodule SertantaiWeb.AuthLive do
 
   # Handle form submission
   def handle_event("submit", %{"user" => user_params}, socket) do
+    require Logger
+    Logger.info("Form submitted with action: #{socket.assigns.action}, params: #{inspect(user_params)}")
+    
     case socket.assigns.action do
       :login -> handle_login(socket, user_params)
       :register -> handle_register(socket, user_params)
@@ -97,30 +105,38 @@ defmodule SertantaiWeb.AuthLive do
     end
   end
 
-  # Handle login form submission
-  defp handle_login(socket, user_params) do
-    form = AshAuthentication.Form.for_authentication(User, :password)
-    
-    case AshAuthentication.Form.submit(form, user_params) do
-      {:ok, _user} ->
-        # Redirect to dashboard or return_to path
-        return_to = get_connect_params(socket)["return_to"] || ~p"/dashboard"
-        
-        {:noreply,
-         socket
-         |> put_flash(:info, "Welcome back!")
-         |> redirect(to: return_to)}
-
-      {:error, form} ->
-        {:noreply, assign(socket, :form, to_form(form))}
+  # Handle validation events
+  def handle_event("validate", %{"user" => user_params}, socket) do
+    form = case socket.assigns.action do
+      :login -> AshPhoenix.Form.for_action(User, :sign_in_with_password, domain: Sertantai.Accounts)
+      :register -> AshPhoenix.Form.for_action(User, :register_with_password, domain: Sertantai.Accounts)
+      :reset_password -> AshPhoenix.Form.for_action(User, :request_password_reset, domain: Sertantai.Accounts)
+      :profile -> AshPhoenix.Form.for_action(User, :update, domain: Sertantai.Accounts, initial: socket.assigns.current_user)
+      :change_password -> AshPhoenix.Form.for_action(User, :change_password, domain: Sertantai.Accounts, initial: socket.assigns.current_user)
     end
+    
+    form = AshPhoenix.Form.validate(form, user_params)
+    {:noreply, assign(socket, :form, to_form(form))}
+  end
+
+  # Handle other form events (e.g., field focus/blur events)
+  def handle_event(_event, _params, socket) do
+    {:noreply, socket}
+  end
+
+  # Handle login form submission - no longer needed as form posts directly to auth controller
+  defp handle_login(socket, _user_params) do
+    {:noreply, socket}
   end
 
   # Handle registration form submission
   defp handle_register(socket, user_params) do
-    form = AshAuthentication.Form.for_action(User, :register_with_password)
+    require Logger
+    Logger.info("Attempting registration with params: #{inspect(user_params)}")
     
-    case AshAuthentication.Form.submit(form, user_params) do
+    form = AshPhoenix.Form.for_action(User, :register_with_password, domain: Sertantai.Accounts)
+    
+    case AshPhoenix.Form.submit(form, params: user_params) do
       {:ok, _user} ->
         {:noreply,
          socket
@@ -134,9 +150,9 @@ defmodule SertantaiWeb.AuthLive do
 
   # Handle password reset form submission
   defp handle_reset_password(socket, user_params) do
-    form = Form.for_action(User, :request_password_reset)
+    form = AshPhoenix.Form.for_action(User, :request_password_reset)
     
-    case Form.submit(form, user_params) do
+    case AshPhoenix.Form.submit(form, params: user_params) do
       {:ok, _} ->
         socket
         |> put_flash(:info, "If the email exists, you will receive password reset instructions.")
@@ -150,9 +166,9 @@ defmodule SertantaiWeb.AuthLive do
   # Handle profile update form submission
   defp handle_profile_update(socket, user_params) do
     current_user = socket.assigns.current_user
-    form = Form.for_action(User, :update, current_user)
+    form = AshPhoenix.Form.for_action(User, :update, current_user)
     
-    case Form.submit(form, user_params) do
+    case AshPhoenix.Form.submit(form, params: user_params) do
       {:ok, user} ->
         socket
         |> assign(:current_user, user)
@@ -167,9 +183,9 @@ defmodule SertantaiWeb.AuthLive do
   # Handle change password form submission
   defp handle_change_password(socket, user_params) do
     current_user = socket.assigns.current_user
-    form = Form.for_action(User, :change_password, current_user)
+    form = AshPhoenix.Form.for_action(User, :change_password, current_user)
     
-    case Form.submit(form, user_params) do
+    case AshPhoenix.Form.submit(form, params: user_params) do
       {:ok, _user} ->
         socket
         |> put_flash(:info, "Password changed successfully!")
@@ -178,19 +194,5 @@ defmodule SertantaiWeb.AuthLive do
       {:error, form} ->
         {:noreply, assign(socket, :form, to_form(form))}
     end
-  end
-
-  # Handle validation events
-  def handle_event("validate", %{"user" => user_params}, socket) do
-    form = case socket.assigns.action do
-      :login -> Form.for_authentication(User, :password)
-      :register -> Form.for_action(User, :register_with_password)
-      :reset_password -> Form.for_action(User, :request_password_reset)
-      :profile -> Form.for_action(User, :update, socket.assigns.current_user)
-      :change_password -> Form.for_action(User, :change_password, socket.assigns.current_user)
-    end
-    
-    form = Form.validate(form, user_params)
-    {:noreply, assign(socket, :form, to_form(form))}
   end
 end

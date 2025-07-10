@@ -28,15 +28,17 @@ mix phx.server              # Start development server
 iex -S mix phx.server       # Start server in interactive shell
 ```
 
-#### Using Local PostgreSQL
+#### Using Local PostgreSQL (Docker Container)
 ```bash
-./scripts/start_local_dev.sh  # Start local PostgreSQL with Docker
-source .env.local            # Load local environment variables
-mix ecto.create              # Create local database
-mix ecto.migrate             # Run migrations
-mix run priv/repo/seeds.exs  # Seed with test data
+sertantai-dev                # Recommended: Start PostgreSQL + Phoenix (one command)
+# OR manually:
+docker-compose up -d postgres # Start PostgreSQL Docker container
+source .env.local            # Load local environment variables  
+mix ecto.migrate             # Run any pending migrations
 mix phx.server               # Start development server
 ```
+
+**Note**: The local dev database contains 19K+ UK LRT records imported from production.
 
 #### Switch Between Databases
 ```bash
@@ -112,6 +114,21 @@ mix esbuild sertantai       # Build JavaScript with ESBuild
 - Uses PostgreSQL with Ecto
 - Configured for UTC timestamps
 - Development environment includes automatic database setup in test alias
+
+**⚠️ CRITICAL DATABASE RULES:**
+- **LOCAL DEV DATABASE**: Runs in Docker container via `docker-compose.yml` 
+- **NEVER DELETE** records from the dev database - contains 19K+ imported UK LRT records
+- **NEVER CREATE MIGRATIONS** for tables that already exist in production
+- **TO START LOCAL DB**: Use `sertantai-dev` command or `docker-compose up -d postgres`
+- **CONNECTION**: `postgresql://postgres:postgres@localhost:5432/sertantai_dev`
+- **PRODUCTION DB**: Supabase PostgreSQL (read-only access for data imports only)
+
+**DATA IMPORT PROCESS:**
+- **Initial import**: Use `scripts/import_uk_lrt_data.exs` to import data from Supabase production
+- **Batch size**: 500 records per batch to avoid timeouts
+- **Columns imported**: Only fields defined in `lib/sertantai/uk_lrt.ex` resource
+- **Run with**: `source .env && mix run scripts/import_uk_lrt_data.exs`
+- **Purpose**: For extending data model - first import base data, then add new columns/tables
 
 ### Frontend
 - Tailwind CSS configured with custom config file

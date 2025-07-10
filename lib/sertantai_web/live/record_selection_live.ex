@@ -186,7 +186,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
   # Private functions
 
   defp load_initial_data(socket) do
-    # Load family options
+    # Load family options only, don't load records until family is selected
     case Ash.read(UkLrt |> Ash.Query.for_read(:distinct_families), domain: Sertantai.Domain) do
       {:ok, families} ->
         family_options = 
@@ -198,7 +198,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
         socket
         |> assign(:family_options, family_options)
         |> load_family_ii_options()
-        |> load_filtered_records()
+        # Don't load records initially - wait for family selection
 
       {:error, _error} ->
         socket
@@ -230,29 +230,40 @@ defmodule SertantaiWeb.RecordSelectionLive do
     page = socket.assigns.current_page
     page_size = socket.assigns.page_size
 
-    # Build query with filters
-    query = build_filtered_query(filters, page, page_size)
+    # Only load records if a family is selected
+    family = if filters["family"] != "", do: filters["family"], else: nil
+    
+    if family do
+      # Build query with filters
+      query = build_filtered_query(filters, page, page_size)
 
-    case Ash.read(query, domain: Sertantai.Domain) do
-      {:ok, %{results: records, count: count}} ->
-        socket
-        |> assign(:records, records)
-        |> assign(:total_count, count || 0)
-        |> assign(:loading, false)
+      case Ash.read(query, domain: Sertantai.Domain) do
+        {:ok, %{results: records, count: count}} ->
+          socket
+          |> assign(:records, records)
+          |> assign(:total_count, count || 0)
+          |> assign(:loading, false)
 
-      {:ok, records} when is_list(records) ->
-        # Fallback for non-paginated results
-        socket
-        |> assign(:records, records)
-        |> assign(:total_count, length(records))
-        |> assign(:loading, false)
+        {:ok, records} when is_list(records) ->
+          # Fallback for non-paginated results
+          socket
+          |> assign(:records, records)
+          |> assign(:total_count, length(records))
+          |> assign(:loading, false)
 
-      {:error, error} ->
-        socket
-        |> assign(:records, [])
-        |> assign(:total_count, 0)
-        |> assign(:loading, false)
-        |> put_flash(:error, "Failed to load records: #{inspect(error)}")
+        {:error, error} ->
+          socket
+          |> assign(:records, [])
+          |> assign(:total_count, 0)
+          |> assign(:loading, false)
+          |> put_flash(:error, "Failed to load records: #{inspect(error)}")
+      end
+    else
+      # No family selected, don't load records
+      socket
+      |> assign(:records, [])
+      |> assign(:total_count, 0)
+      |> assign(:loading, false)
     end
   end
 

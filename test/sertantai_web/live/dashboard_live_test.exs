@@ -1,11 +1,13 @@
 defmodule SertantaiWeb.DashboardLiveTest do
-  use SertantaiWeb.ConnCase
+  use SertantaiWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
 
   alias Sertantai.Accounts.User
   alias Sertantai.Sync.SyncConfiguration
 
   setup do
+    # Setup manual sandbox for sequential test execution
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Sertantai.Repo)
     # Create a test user
     user_attrs = %{
       email: "dashboard@example.com",

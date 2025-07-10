@@ -10,28 +10,64 @@ defmodule SertantaiWeb.RecordSelectionLive do
   @default_page_size 20
 
   def mount(_params, session, socket) do
-    # Load selected records from session if available
-    selected_records = case session["selected_record_ids"] do
-      nil -> MapSet.new()
-      ids when is_list(ids) -> MapSet.new(ids)
-      _ -> MapSet.new()
-    end
+    require Logger
+    Logger.info("RecordSelection mount starting...")
+    Logger.info("Session: #{inspect(session)}")
+    
+    # Load current user from session using the user token
+    case session["user"] do
+      nil ->
+        Logger.info("No user in session, redirecting to login")
+        {:ok, redirect(socket, to: "/login")}
+        
+      user_token when is_binary(user_token) ->
+        Logger.info("Found user token in session: #{user_token}")
+        
+        # Extract user ID from token and load user
+        case extract_user_id_from_token(user_token) do
+          {:ok, user_id} ->
+            case Ash.get(Sertantai.Accounts.User, user_id, domain: Sertantai.Accounts) do
+              {:ok, user} ->
+                Logger.info("User authenticated: #{inspect(user.email)}")
+                
+                # Load selected records from session if available
+                selected_records = case session["selected_record_ids"] do
+                  nil -> MapSet.new()
+                  ids when is_list(ids) -> MapSet.new(ids)
+                  _ -> MapSet.new()
+                end
 
-    {:ok,
-     socket
-     |> assign(:page_title, "UK LRT Record Selection")
-     |> assign(:loading, false)
-     |> assign(:records, [])
-     |> assign(:selected_records, selected_records)
-     |> assign(:total_count, 0)
-     |> assign(:current_page, 1)
-     |> assign(:page_size, @default_page_size)
-     |> assign(:filters, %{family: "", family_ii: ""})
-     |> assign(:family_options, [])
-     |> assign(:family_ii_options, [])
-     |> assign(:show_filters, true)
-     |> assign(:max_selections, 1000)  # Add selection limit
-     |> load_initial_data()}
+                {:ok,
+                 socket
+                 |> assign(:current_user, user)
+                 |> assign(:page_title, "UK LRT Record Selection")
+                 |> assign(:loading, false)
+                 |> assign(:records, [])
+                 |> assign(:selected_records, selected_records)
+                 |> assign(:total_count, 0)
+                 |> assign(:current_page, 1)
+                 |> assign(:page_size, @default_page_size)
+                 |> assign(:filters, %{family: "", family_ii: ""})
+                 |> assign(:family_options, [])
+                 |> assign(:family_ii_options, [])
+                 |> assign(:show_filters, true)
+                 |> assign(:max_selections, 1000)  # Add selection limit
+                 |> load_initial_data()}
+                 
+              {:error, error} ->
+                Logger.error("Failed to load user: #{inspect(error)}")
+                {:ok, redirect(socket, to: "/login")}
+            end
+            
+          {:error, _} ->
+            Logger.error("Failed to extract user ID from token")
+            {:ok, redirect(socket, to: "/login")}
+        end
+        
+      _ ->
+        Logger.error("Invalid user session data")
+        {:ok, redirect(socket, to: "/login")}
+    end
   end
 
   def handle_params(params, _url, socket) do
@@ -39,26 +75,22 @@ defmodule SertantaiWeb.RecordSelectionLive do
   end
 
   def handle_event("filter_change", %{"filters" => filters}, socket) do
-    updated_socket =
-      socket
-      |> assign(:filters, filters)
-      |> assign(:current_page, 1)
-      |> assign(:loading, true)
-      |> load_filtered_records()
-
-    {:noreply, updated_socket}
+    {:noreply,
+     socket
+     |> assign(:filters, filters)
+     |> assign(:current_page, 1)
+     |> assign(:loading, true)
+     |> load_filtered_records()}
   end
 
   def handle_event("page_change", %{"page" => page}, socket) do
     page_num = String.to_integer(page)
     
-    updated_socket =
-      socket
-      |> assign(:current_page, page_num)
-      |> assign(:loading, true)
-      |> load_filtered_records()
-
-    {:noreply, updated_socket}
+    {:noreply,
+     socket
+     |> assign(:current_page, page_num)
+     |> assign(:loading, true)
+     |> load_filtered_records()}
   end
 
   def handle_event("toggle_record", %{"record_id" => record_id}, socket) do
@@ -131,6 +163,20 @@ defmodule SertantaiWeb.RecordSelectionLive do
     {:noreply, updated_socket}
   end
 
+  def handle_event("clear_filters", _params, socket) do
+    # Clear filters and reset to initial state
+    updated_socket = 
+      socket
+      |> assign(:filters, %{family: "", family_ii: ""})
+      |> assign(:current_page, 1)
+      |> assign(:records, [])
+      |> assign(:total_count, 0)
+      |> assign(:loading, false)
+    
+    # Clean up URL by navigating to clean records path
+    {:noreply, push_patch(updated_socket, to: ~p"/records")}
+  end
+
   def handle_event("toggle_filters", _params, socket) do
     {:noreply, assign(socket, :show_filters, !socket.assigns.show_filters)}
   end
@@ -184,6 +230,14 @@ defmodule SertantaiWeb.RecordSelectionLive do
   end
 
   # Private functions
+
+  defp extract_user_id_from_token(token) do
+    # Extract user ID from token format: "318ailbe6h3s84d0nk000053:user?id=eac62b64-662f-4de8-bf22-4440467a234c"
+    case String.split(token, "id=") do
+      [_prefix, user_id] -> {:ok, user_id}
+      _ -> {:error, "Invalid token format"}
+    end
+  end
 
   defp load_initial_data(socket) do
     # Load family options only, don't load records until family is selected
@@ -292,9 +346,13 @@ defmodule SertantaiWeb.RecordSelectionLive do
       "family" => params["family"] || "",
       "family_ii" => params["family_ii"] || ""
     }
+    
+    page = String.to_integer(params["page"] || "1")
 
     socket
     |> assign(:filters, filters)
+    |> assign(:current_page, page)
+    |> assign(:loading, true)
     |> load_filtered_records()
   end
 

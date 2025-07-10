@@ -16,7 +16,11 @@ defmodule SertantaiWeb.CoreComponents do
   """
   use Phoenix.Component
   use Gettext, backend: SertantaiWeb.Gettext
-
+  use Phoenix.VerifiedRoutes,
+    endpoint: SertantaiWeb.Endpoint,
+    router: SertantaiWeb.Router,
+    statics: SertantaiWeb.static_paths()
+  
   alias Phoenix.LiveView.JS
 
   @doc """
@@ -672,5 +676,96 @@ defmodule SertantaiWeb.CoreComponents do
   """
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+
+  @doc """
+  Renders a user menu with current user information and logout option.
+
+  ## Examples
+
+      <.user_menu current_user={@current_user} />
+
+  """
+  attr :current_user, :any, required: true
+
+  def user_menu(assigns) do
+    user_display_name = get_user_display_name(assigns.current_user)
+    
+    assigns = assign(assigns, :user_display_name, user_display_name)
+    
+    ~H"""
+    <div class="relative" id="user-menu">
+      <button
+        type="button"
+        class="flex items-center gap-2 text-sm font-medium text-zinc-700 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md px-2 py-1"
+        phx-click={JS.toggle(to: "#user-dropdown")}
+        aria-expanded="false"
+        aria-haspopup="true"
+      >
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <span class="text-blue-600 font-semibold text-sm">
+              <%= String.first(@user_display_name) |> String.upcase() %>
+            </span>
+          </div>
+          <span class="hidden sm:block"><%= @user_display_name %></span>
+        </div>
+        <.icon name="hero-chevron-down" class="w-4 h-4 text-zinc-400" />
+      </button>
+
+      <div 
+        id="user-dropdown"
+        class="hidden absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+        role="menu" 
+        aria-orientation="vertical" 
+        aria-labelledby="user-menu-button"
+        phx-click-away={JS.hide(to: "#user-dropdown")}
+      >
+        <div class="px-4 py-2 text-sm text-zinc-500 border-b border-zinc-100">
+          Signed in as <strong><%= @current_user.email %></strong>
+        </div>
+        <.link 
+          navigate={~p"/profile"} 
+          class="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50" 
+          role="menuitem"
+          phx-click={JS.hide(to: "#user-dropdown")}
+        >
+          Profile
+        </.link>
+        <.link 
+          navigate={~p"/change-password"} 
+          class="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50" 
+          role="menuitem"
+          phx-click={JS.hide(to: "#user-dropdown")}
+        >
+          Change Password
+        </.link>
+        <hr class="border-zinc-100" />
+        <.link 
+          href={~p"/sign-out"} 
+          method="get"
+          class="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50" 
+          role="menuitem"
+          data-confirm="Are you sure you want to sign out?"
+        >
+          Sign Out
+        </.link>
+      </div>
+    </div>
+    """
+  end
+
+  # Helper function to get user display name
+  defp get_user_display_name(user) do
+    cond do
+      user.first_name && user.last_name ->
+        "#{user.first_name} #{user.last_name}"
+      user.first_name ->
+        user.first_name
+      user.last_name ->
+        user.last_name
+      true ->
+        user.email |> String.split("@") |> List.first() |> String.capitalize()
+    end
   end
 end

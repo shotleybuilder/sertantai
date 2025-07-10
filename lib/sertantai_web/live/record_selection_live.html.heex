@@ -48,11 +48,10 @@
               name="filters[family]" 
               id="family"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              value={@filters["family"] || ""}
             >
-              <option value="">All Families</option>
+              <option value="" selected={(@filters["family"] || "") == ""}>All Families</option>
               <%= for family <- @family_options do %>
-                <option value={family}><%= family %></option>
+                <option value={family} selected={@filters["family"] == family}><%= family %></option>
               <% end %>
             </select>
           </div>
@@ -66,11 +65,10 @@
               name="filters[family_ii]" 
               id="family_ii"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              value={@filters["family_ii"] || ""}
             >
-              <option value="">All Secondary Families</option>
+              <option value="" selected={(@filters["family_ii"] || "") == ""}>All Secondary Families</option>
               <%= for family_ii <- @family_ii_options do %>
-                <option value={family_ii}><%= family_ii %></option>
+                <option value={family_ii} selected={@filters["family_ii"] == family_ii}><%= family_ii %></option>
               <% end %>
             </select>
           </div>

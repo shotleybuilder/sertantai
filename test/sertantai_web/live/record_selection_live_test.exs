@@ -442,6 +442,98 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
         assert true
       end
     end
+
+    @tag :sync
+    test "filter dropdown values persist during record selection and pagination", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = conn |> assign(:current_user, user)
+
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _initial_html} ->
+            # Apply TestFamily filter
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html_after_filter = render(view)
+            
+            # Verify filter is applied and dropdown shows selected value
+            assert html_after_filter =~ "TestFamily"
+            assert html_after_filter =~ "Test Record 1"
+            
+            # Check that the form select has the correct option selected  
+            assert html_after_filter =~ ~r/<option value="TestFamily"[^>]*selected[^>]*>/
+            
+            # Select a record - filter dropdown should maintain its value
+            first_record = List.first(test_records)
+            render_change(view, :toggle_record, %{record_id: first_record.id})
+            html_after_selection = render(view)
+            
+            # Filter value should still be visible in dropdown after record selection
+            assert html_after_selection =~ ~r/<option value="TestFamily"[^>]*selected[^>]*>/
+            assert html_after_selection =~ "TestFamily"
+            assert html_after_selection =~ "checked"  # Record should be selected
+            
+            # Test pagination - filter dropdown should maintain its value
+            # (This will only work if there are enough records to paginate)
+            render_change(view, :page_change, %{page: "1"})
+            html_after_pagination = render(view)
+            
+            # Filter value should still be visible in dropdown after pagination
+            assert html_after_pagination =~ ~r/<option value="TestFamily"[^>]*selected[^>]*>/
+            assert html_after_pagination =~ "TestFamily"
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :sync
+    test "filter values persist in browser-like scenario", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = conn |> assign(:current_user, user)
+
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _initial_html} ->
+            # Step 1: Apply a filter
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily", family_ii: ""}})
+            
+            # Step 2: Get the current state and verify filter is set
+            html_after_filter = render(view)
+            socket_assigns = :sys.get_state(view.pid).socket.assigns
+            
+            # Verify assigns contain the filter values
+            assert socket_assigns.filters["family"] == "TestFamily"
+            assert socket_assigns.filters["family_ii"] == ""
+            
+            # Step 3: Select a record 
+            first_record = List.first(test_records)
+            render_change(view, :toggle_record, %{record_id: first_record.id})
+            
+            # Step 4: Check state after selection
+            socket_assigns_after_selection = :sys.get_state(view.pid).socket.assigns
+            
+            # Filter values should still be preserved in assigns
+            assert socket_assigns_after_selection.filters["family"] == "TestFamily"
+            assert socket_assigns_after_selection.filters["family_ii"] == ""
+            
+            # Step 5: Test pagination
+            render_change(view, :page_change, %{page: "2"})
+            
+            # Step 6: Check state after pagination  
+            socket_assigns_after_pagination = :sys.get_state(view.pid).socket.assigns
+            
+            # Filter values should still be preserved in assigns
+            assert socket_assigns_after_pagination.filters["family"] == "TestFamily"
+            assert socket_assigns_after_pagination.filters["family_ii"] == ""
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
   end
 
   describe "error handling" do

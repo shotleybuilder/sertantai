@@ -35,6 +35,9 @@ defmodule SertantaiWeb.RecordSelectionLive do
                 persisted_ids = UserSelections.get_selections(user.id)
                 selected_records = MapSet.new(persisted_ids)
 
+                # Store audit context during mount when connect_info is available
+                audit_context = extract_audit_context(socket)
+                
                 {:ok,
                  socket
                  |> assign(:current_user, user)
@@ -50,6 +53,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
                  |> assign(:family_ii_options, [])
                  |> assign(:show_filters, true)
                  |> assign(:max_selections, 1000)  # Add selection limit
+                 |> assign(:audit_context, audit_context)  # Store audit context
                  |> load_initial_data()}
                  
               {:error, error} ->
@@ -408,27 +412,38 @@ defmodule SertantaiWeb.RecordSelectionLive do
     end
   end
   
-  # Build audit context from socket and request
+  # Extract audit context from socket during mount (when connect_info is available)
+  defp extract_audit_context(socket) do
+    %{
+      session_id: get_session_id_from_connect_info(socket),
+      ip_address: get_connect_ip_from_connect_info(socket),
+      user_agent: get_user_agent_from_connect_info(socket)
+    }
+  end
+  
+  # Build audit context from stored socket assigns
   defp build_audit_opts(socket, additional_opts \\ []) do
+    audit_context = Map.get(socket.assigns, :audit_context, %{})
+    
     base_opts = [
-      session_id: get_session_id(socket),
-      ip_address: get_connect_ip(socket),
-      user_agent: get_user_agent(socket)
+      session_id: Map.get(audit_context, :session_id),
+      ip_address: Map.get(audit_context, :ip_address),
+      user_agent: Map.get(audit_context, :user_agent)
     ]
     
     Keyword.merge(base_opts, additional_opts)
   end
   
-  # Extract session ID from socket
-  defp get_session_id(socket) do
+  # Extract session ID from connect_info during mount
+  defp get_session_id_from_connect_info(socket) do
     case get_connect_info(socket, :session) do
       %{"_csrf_token" => token} -> String.slice(token, 0, 16)
       _ -> nil
     end
   end
   
-  # Extract IP address from socket
-  defp get_connect_ip(socket) do
+  # Extract IP address from connect_info during mount
+  defp get_connect_ip_from_connect_info(socket) do
     case get_connect_info(socket, :peer_data) do
       %{address: address} -> 
         case :inet.ntoa(address) do
@@ -439,8 +454,8 @@ defmodule SertantaiWeb.RecordSelectionLive do
     end
   end
   
-  # Extract User-Agent from socket
-  defp get_user_agent(socket) do
+  # Extract User-Agent from connect_info during mount
+  defp get_user_agent_from_connect_info(socket) do
     case get_connect_info(socket, :user_agent) do
       ua when is_binary(ua) -> ua
       _ -> nil

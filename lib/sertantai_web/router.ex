@@ -76,6 +76,15 @@ defmodule SertantaiWeb.Router do
     end
   end
   
+  # Sync API endpoints for external tools
+  scope "/api/sync", SertantaiWeb do
+    pipe_through [:api, :require_authenticated_user]
+    
+    get "/selected_ids", SyncController, :selected_ids
+    get "/selected_records", SyncController, :selected_records
+    get "/export/:format", SyncController, :export
+  end
+  
   # JSON API endpoints will be defined by the resource directly
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

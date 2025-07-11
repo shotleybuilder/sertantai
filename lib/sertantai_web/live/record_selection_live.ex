@@ -6,6 +6,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
   use SertantaiWeb, :live_view
 
   alias Sertantai.UkLrt
+  alias Sertantai.UserSelections
 
   @default_page_size 20
 
@@ -30,12 +31,9 @@ defmodule SertantaiWeb.RecordSelectionLive do
               {:ok, user} ->
                 Logger.info("User authenticated: #{inspect(user.email)}")
                 
-                # Load selected records from session if available
-                selected_records = case session["selected_record_ids"] do
-                  nil -> MapSet.new()
-                  ids when is_list(ids) -> MapSet.new(ids)
-                  _ -> MapSet.new()
-                end
+                # Load selected records from persistent storage
+                persisted_ids = UserSelections.get_selections(user.id)
+                selected_records = MapSet.new(persisted_ids)
 
                 {:ok,
                  socket
@@ -386,9 +384,32 @@ defmodule SertantaiWeb.RecordSelectionLive do
   # Session persistence helper
   defp persist_selections(socket, selected_records) do
     selected_ids = MapSet.to_list(selected_records)
-    # For now, we'll store in socket assigns instead of session
-    # Session storage can be implemented later with proper session management
-    assign(socket, :selected_records_persistent, selected_ids)
+    
+    # Store in assigns for immediate use
+    updated_socket = assign(socket, :selected_records_persistent, selected_ids)
+    
+    # Store in persistent storage for session persistence
+    case socket.assigns[:current_user] do
+      %{id: user_id} when not is_nil(user_id) ->
+        UserSelections.store_selections(user_id, selected_ids)
+        updated_socket
+      _ ->
+        updated_socket
+    end
+  end
+
+  @doc "Get selected record IDs for a user (for sync functionality)"
+  def get_user_selections(user_id) do
+    UserSelections.get_selections(user_id)
+  end
+
+  @doc "Get selected records data for a user (for sync functionality)"
+  def get_user_selected_records(user_id) do
+    selected_ids = get_user_selections(user_id)
+    case fetch_records_by_ids(selected_ids) do
+      {:ok, records} -> {:ok, records}
+      {:error, error} -> {:error, error}
+    end
   end
 
   # Export functionality

@@ -534,6 +534,85 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
         assert true
       end
     end
+
+    @tag :sync
+    test "selected records persist between sessions using UserSelections", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = conn |> assign(:current_user, user)
+
+      if length(test_records) > 0 do
+        first_record = List.first(test_records)
+        
+        # Clear any existing selections for this user
+        Sertantai.UserSelections.clear_selections(user.id)
+        
+        # First session: select records
+        {:ok, view1, _} = live(authenticated_conn, "/records")
+        render_change(view1, :filter_change, %{filters: %{family: "TestFamily"}})
+        render_change(view1, :toggle_record, %{record_id: first_record.id})
+        
+        # Verify record is selected in first session
+        html_session1 = render(view1)
+        assert html_session1 =~ "1 selected"
+        assert html_session1 =~ "checked"
+        
+        # Verify persistence in UserSelections
+        persisted_selections = Sertantai.UserSelections.get_selections(user.id)
+        assert first_record.id in persisted_selections
+        
+        # Second session: create completely new LiveView (simulating browser refresh/new session)
+        {:ok, view2, _} = live(authenticated_conn, "/records")
+        render_change(view2, :filter_change, %{filters: %{family: "TestFamily"}})
+        
+        # Verify record is still selected in second session (loaded from persistence)
+        html_session2 = render(view2)
+        assert html_session2 =~ "1 selected"
+        assert html_session2 =~ "checked"
+        
+      else
+        assert true
+      end
+    end
+
+    @tag :sync  
+    test "selected records are available for sync configuration", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = conn |> assign(:current_user, user)
+
+      if length(test_records) > 0 do
+        first_record = List.first(test_records)
+        second_record = Enum.at(test_records, 1, first_record)
+        
+        # Clear any existing selections
+        Sertantai.UserSelections.clear_selections(user.id)
+        
+        # Select multiple records via UI
+        {:ok, view, _} = live(authenticated_conn, "/records")
+        render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+        render_change(view, :toggle_record, %{record_id: first_record.id})
+        render_change(view, :toggle_record, %{record_id: second_record.id})
+        
+        # Verify records are selected in UI
+        html_after_selection = render(view)
+        selected_count = if first_record.id == second_record.id, do: 1, else: 2
+        assert html_after_selection =~ "#{selected_count} selected"
+        
+        # Test direct access to selections (what sync tools would use)
+        selected_ids = SertantaiWeb.RecordSelectionLive.get_user_selections(user.id)
+        assert length(selected_ids) == selected_count
+        assert first_record.id in selected_ids
+        
+        # Test getting full record data for sync
+        {:ok, selected_records} = SertantaiWeb.RecordSelectionLive.get_user_selected_records(user.id)
+        assert length(selected_records) == selected_count
+        assert Enum.any?(selected_records, fn record -> record.id == first_record.id end)
+        
+        # Test export functionality (which sync would also use)
+        result = render_click(view, :export_json, %{})
+        assert result
+        
+      else
+        assert true
+      end
+    end
   end
 
   describe "error handling" do

@@ -18,6 +18,8 @@ defmodule Sertantai.Application do
       Sertantai.Sync.SyncWorker,
       # Start the rate limiter for API and sync throttling
       Sertantai.Sync.RateLimiter,
+      # Start user selections manager for session persistence
+      Sertantai.UserSelections,
       # Start to serve requests, typically the last entry
       SertantaiWeb.Endpoint
     ]

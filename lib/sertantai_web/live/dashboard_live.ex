@@ -37,15 +37,8 @@ defmodule SertantaiWeb.DashboardLive do
                   {:error, _} -> []
                 end
 
-                # Get selected records count
-                selected_records_count = case Ash.read(
-                  Sertantai.Sync.SelectedRecord 
-                  |> Ash.Query.for_read(:for_user, %{user_id: user.id}),
-                  domain: Sertantai.Sync
-                ) do
-                  {:ok, records} -> length(records)
-                  {:error, _} -> 0
-                end
+                # Get selected records count using new persistent storage
+                selected_records_count = Sertantai.UserSelections.selection_count(user.id)
 
                 # Get sync summary
                 sync_summary = case Sertantai.Sync.SelectedRecord.get_sync_summary(user.id) do

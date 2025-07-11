@@ -153,10 +153,19 @@ defmodule SertantaiWeb.RecordSelectionLive do
   end
 
   def handle_event("clear_all_selections", _params, socket) do
+    # Clear all selections with audit logging
+    case socket.assigns[:current_user] do
+      %{id: user_id} when not is_nil(user_id) ->
+        audit_opts = build_audit_opts(socket)
+        UserSelections.clear_selections(user_id, audit_opts)
+      _ ->
+        :ok
+    end
+    
     updated_socket = 
       socket
       |> assign(:selected_records, MapSet.new())
-      |> persist_selections(MapSet.new())
+      |> assign(:selected_records_persistent, [])
 
     {:noreply, updated_socket}
   end
@@ -381,20 +390,60 @@ defmodule SertantaiWeb.RecordSelectionLive do
   defp format_year(year) when is_binary(year), do: year
   defp format_year(_), do: ""
 
-  # Session persistence helper
-  defp persist_selections(socket, selected_records) do
+  # Session persistence helper with audit logging
+  defp persist_selections(socket, selected_records, opts \\ []) do
     selected_ids = MapSet.to_list(selected_records)
     
     # Store in assigns for immediate use
     updated_socket = assign(socket, :selected_records_persistent, selected_ids)
     
-    # Store in persistent storage for session persistence
+    # Store in persistent storage with audit information
     case socket.assigns[:current_user] do
       %{id: user_id} when not is_nil(user_id) ->
-        UserSelections.store_selections(user_id, selected_ids)
+        audit_opts = build_audit_opts(socket, opts)
+        UserSelections.store_selections(user_id, selected_ids, audit_opts)
         updated_socket
       _ ->
         updated_socket
+    end
+  end
+  
+  # Build audit context from socket and request
+  defp build_audit_opts(socket, additional_opts \\ []) do
+    base_opts = [
+      session_id: get_session_id(socket),
+      ip_address: get_connect_ip(socket),
+      user_agent: get_user_agent(socket)
+    ]
+    
+    Keyword.merge(base_opts, additional_opts)
+  end
+  
+  # Extract session ID from socket
+  defp get_session_id(socket) do
+    case get_connect_info(socket, :session) do
+      %{"_csrf_token" => token} -> String.slice(token, 0, 16)
+      _ -> nil
+    end
+  end
+  
+  # Extract IP address from socket
+  defp get_connect_ip(socket) do
+    case get_connect_info(socket, :peer_data) do
+      %{address: address} -> 
+        case :inet.ntoa(address) do
+          {:error, _} -> nil
+          ip_string -> to_string(ip_string)
+        end
+      _ -> nil
+    end
+  end
+  
+  # Extract User-Agent from socket
+  defp get_user_agent(socket) do
+    case get_connect_info(socket, :user_agent) do
+      ua when is_binary(ua) -> ua
+      _ -> nil
     end
   end
 

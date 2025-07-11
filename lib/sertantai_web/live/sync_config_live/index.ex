@@ -5,24 +5,75 @@ defmodule SertantaiWeb.SyncConfigLive.Index do
   
   use SertantaiWeb, :live_view
 
-  def mount(_params, _session, socket) do
-    user = socket.assigns.current_user
+  def mount(_params, session, socket) do
+    require Logger
+    Logger.info("SyncConfig mount starting...")
+    Logger.info("Session: #{inspect(session)}")
+    
+    # Load current user from session using the user token
+    case Map.get(session, "user") do
+      nil ->
+        Logger.info("No user in session, redirecting to login")
+        {:ok, redirect(socket, to: "/login")}
+        
+      user_token when is_binary(user_token) ->
+        Logger.info("Found user token in session: #{user_token}")
+        
+        # Extract user ID from token and load user
+        case extract_user_id_from_token(user_token) do
+          {:ok, user_id} ->
+            case Ash.get(Sertantai.Accounts.User, user_id, domain: Sertantai.Accounts) do
+              {:ok, user} ->
+                Logger.info("User authenticated: #{inspect(user.email)}")
+                
+                sync_configs = case Ash.read(
+                  Sertantai.Sync.SyncConfiguration
+                  |> Ash.Query.for_read(:for_user, %{user_id: user.id})
+                  |> Ash.Query.load([:selected_records]),
+                  domain: Sertantai.Sync
+                ) do
+                  {:ok, configs} -> configs
+                  {:error, _} -> []
+                end
 
-    sync_configs = case Ash.read(
-      Sertantai.Sync.SyncConfiguration
-      |> Ash.Query.for_read(:for_user, %{user_id: user.id})
-      |> Ash.Query.load([:selected_records]),
-      domain: Sertantai.Sync
-    ) do
-      {:ok, configs} -> configs
-      {:error, _} -> []
+                {:ok, assign(socket, 
+                  current_user: user,
+                  sync_configs: sync_configs,
+                  page_title: "Sync Configurations"
+                )}
+                
+              {:error, error} ->
+                Logger.error("Failed to load user: #{inspect(error)}")
+                {:ok, redirect(socket, to: "/login")}
+            end
+            
+          {:error, _} ->
+            Logger.error("Failed to extract user ID from token")
+            {:ok, redirect(socket, to: "/login")}
+        end
+        
+      _ ->
+        Logger.error("Invalid user session data")
+        {:ok, redirect(socket, to: "/login")}
     end
-
-    {:ok, assign(socket, 
-      sync_configs: sync_configs,
-      page_title: "Sync Configurations"
-    )}
   end
+  
+  # Helper function to extract user ID from session token
+  defp extract_user_id_from_token(token) when is_binary(token) do
+    case String.split(token, ":") do
+      [_session_id, user_part] ->
+        case String.split(user_part, "?") do
+          ["user", params] ->
+            case String.split(params, "=") do
+              ["id", user_id] -> {:ok, user_id}
+              _ -> {:error, :invalid_format}
+            end
+          _ -> {:error, :invalid_format}
+        end
+      _ -> {:error, :invalid_format}
+    end
+  end
+  defp extract_user_id_from_token(_), do: {:error, :invalid_token}
 
   def handle_event("delete", %{"id" => id}, socket) do
     sync_config = Enum.find(socket.assigns.sync_configs, &(&1.id == id))

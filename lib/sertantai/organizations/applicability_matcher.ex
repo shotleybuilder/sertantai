@@ -7,6 +7,9 @@ defmodule Sertantai.Organizations.ApplicabilityMatcher do
   
   alias Sertantai.UkLrt
   alias Sertantai.Cache.ApplicabilityCache
+  alias Sertantai.Query.ProgressiveQueryBuilder
+  alias Sertantai.Query.ResultStreamer
+  alias Sertantai.Organizations.ProfileAnalyzer
 
   @doc """
   Returns the count of potentially applicable laws for an organization.
@@ -53,6 +56,65 @@ defmodule Sertantai.Organizations.ApplicabilityMatcher do
   def perform_basic_screening(organization) do
     # Use cached screening results
     ApplicabilityCache.get_screening_results(organization)
+  end
+
+  @doc """
+  Performs progressive screening with adaptive complexity based on organization profile.
+  Phase 2: Uses Progressive Query Builder for optimized performance and accuracy.
+  """
+  def perform_progressive_screening(organization, opts \\ []) do
+    # Use progressive query builder for adaptive screening
+    ProgressiveQueryBuilder.execute_progressive_screening(organization, opts)
+  end
+
+  @doc """
+  Analyzes organization profile and returns query complexity recommendations.
+  """
+  def analyze_query_complexity(organization) do
+    ProgressiveQueryBuilder.calculate_query_complexity_score(organization)
+  end
+
+  @doc """
+  Builds optimized query strategy based on organization profile completeness.
+  """
+  def build_query_strategy(organization) do
+    ProgressiveQueryBuilder.build_query_strategy(organization)
+  end
+
+  @doc """
+  Starts progressive result streaming for real-time applicability updates.
+  """
+  def start_progressive_stream(organization, subscriber_pid, opts \\ []) do
+    ResultStreamer.start_progressive_stream(organization, subscriber_pid, opts)
+  end
+
+  @doc """
+  Handles organization profile updates and triggers re-screening if needed.
+  """
+  def handle_profile_update(organization, changed_fields) do
+    ResultStreamer.handle_profile_update(organization, changed_fields)
+  end
+
+  @doc """
+  Performs comprehensive organization profile analysis for screening optimization.
+  """
+  def analyze_organization_profile(organization) do
+    ProfileAnalyzer.analyze_organization_profile(organization)
+  end
+
+  @doc """
+  Calculates enhanced profile completeness with weighted categories.
+  """
+  def calculate_enhanced_completeness(organization) do
+    profile = get_organization_profile(organization)
+    ProfileAnalyzer.calculate_enhanced_completeness(profile)
+  end
+
+  @doc """
+  Generates intelligent recommendations for profile improvement.
+  """
+  def generate_profile_recommendations(organization) do
+    ProfileAnalyzer.generate_profile_recommendations(organization)
   end
 
   @doc """
@@ -111,6 +173,14 @@ defmodule Sertantai.Organizations.ApplicabilityMatcher do
       %{core_profile: profile} when is_map(profile) -> Map.get(profile, field)
       %{"core_profile" => profile} when is_map(profile) -> Map.get(profile, field)
       _ -> nil
+    end
+  end
+
+  defp get_organization_profile(organization) do
+    case organization do
+      %{core_profile: profile} when is_map(profile) -> profile
+      %{"core_profile" => profile} when is_map(profile) -> profile
+      _ -> %{}
     end
   end
 

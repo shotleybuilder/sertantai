@@ -31,15 +31,24 @@ defmodule Sertantai.Organizations.Organization do
     timestamps()
   end
 
-  # Phase 1 Core Profile Fields Structure:
+  # Core Profile Fields Structure (Phase 1 + Phase 2):
   # {
+  #   # Phase 1 Core Fields
   #   "organization_name": "ACME Construction Ltd",
   #   "organization_type": "limited_company", 
   #   "registration_number": "12345678",
   #   "headquarters_region": "england",
   #   "total_employees": 75,
   #   "primary_sic_code": "41201",
-  #   "industry_sector": "construction"
+  #   "industry_sector": "construction",
+  #   
+  #   # Phase 2 Extended Fields for Enhanced Profiling
+  #   "operational_regions": ["england", "wales"],
+  #   "annual_turnover": 2500000,
+  #   "business_activities": ["construction", "civil_engineering", "project_management"],
+  #   "compliance_requirements": ["health_safety", "environmental", "data_protection"],
+  #   "risk_profile": "medium",
+  #   "special_circumstances": "Listed company with overseas operations"
   # }
 
   relationships do
@@ -50,6 +59,21 @@ defmodule Sertantai.Organizations.Organization do
     
     has_many :organization_users, Sertantai.Organizations.OrganizationUser do
       destination_attribute :organization_id
+    end
+  end
+
+  calculations do
+    calculate :profile_completeness_percentage, :decimal, expr(profile_completeness_score * 100) do
+      description "Profile completeness as a percentage (0-100)"
+    end
+    
+    # Phase 2 Enhanced Profile Completeness Calculation
+    calculate :phase2_completeness_score, :decimal, {Sertantai.Organizations.Calculations.Phase2Completeness, []} do
+      description "Phase 2 profile completeness score including extended attributes (0.0-1.0)"
+    end
+    
+    calculate :phase2_completeness_percentage, :decimal, expr(phase2_completeness_score * 100) do
+      description "Phase 2 profile completeness as a percentage (0-100)"
     end
   end
 

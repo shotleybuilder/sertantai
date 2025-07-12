@@ -45,10 +45,12 @@ defmodule Sertantai.Organizations.ApplicabilityMatcherTest do
       assert Map.has_key?(result, :applicable_law_count)
       assert Map.has_key?(result, :sample_regulations)
       assert Map.has_key?(result, :screening_method)
-      assert result.screening_method == "phase1_basic"
+      assert result.screening_method == "phase2_function_optimized"
       assert Map.has_key?(result, :organization_profile)
       assert Map.has_key?(result, :generated_at)
-      assert result.confidence_level == "basic"
+      assert result.confidence_level == "enhanced"
+      assert Map.has_key?(result, :function_filter)
+      assert result.function_filter == "Making laws only (duty-creating)"
     end
 
     test "basic applicability count returns integer" do

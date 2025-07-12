@@ -20,6 +20,8 @@ defmodule Sertantai.Application do
       Sertantai.Sync.RateLimiter,
       # Start user selections manager for session persistence
       Sertantai.UserSelections,
+      # Start Phase 2 applicability cache for high-performance screening
+      {Cachex, name: :applicability_cache, limit: 10_000},
       # Start to serve requests, typically the last entry
       SertantaiWeb.Endpoint
     ]

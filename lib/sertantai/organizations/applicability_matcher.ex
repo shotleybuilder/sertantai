@@ -1,137 +1,108 @@
 defmodule Sertantai.Organizations.ApplicabilityMatcher do
   @moduledoc """
-  Phase 1 basic applicability matching service.
-  Provides simple organization-to-regulation matching based on core profile attributes.
+  Phase 2 enhanced applicability matching service.
+  Provides high-performance organization-to-regulation matching using function-optimized queries
+  and Elixir-native caching for duty-creating laws only ('Making' function).
   """
   
-  import Ecto.Query
-  alias Sertantai.Repo
   alias Sertantai.UkLrt
+  alias Sertantai.Cache.ApplicabilityCache
 
   @doc """
   Returns the count of potentially applicable laws for an organization.
-  Uses basic matching on sector and geographic scope.
+  Phase 2: Uses function-optimized queries filtering to 'Making' function only.
+  Performance-optimized with caching through ApplicabilityCache.
   """
   def basic_applicability_count(organization) do
-    organization
-    |> build_basic_query()
-    |> count_matching_regulations()
+    # Use cached count with function-optimized query
+    ApplicabilityCache.get_law_count(organization)
+  end
+
+  @doc """
+  Direct database query for count (used by cache on miss).
+  Filters to 'Making' function laws only for massive performance improvement.
+  """
+  def direct_count_query(organization) do
+    family = map_sector_to_family(get_industry_sector(organization))
+    geo_extent = get_applicable_geo_extent(organization)
+    
+    case UkLrt.count_for_screening(family, geo_extent, "✔ In force") do
+      {:ok, count} -> count
+      {:error, _} -> 0
+    end
   end
 
   @doc """
   Returns a preview of applicable laws with details for display.
-  Limited to specified number of results for performance.
+  Phase 2: Uses function-optimized Ash actions with caching.
   """
   def basic_applicability_preview(organization, limit \\ 10) do
-    organization
-    |> build_basic_query()
-    |> limit_results(limit)
-    |> execute_query()
+    family = map_sector_to_family(get_industry_sector(organization))
+    geo_extent = get_applicable_geo_extent(organization)
+    
+    case UkLrt.for_applicability_screening(family, geo_extent, "✔ In force", limit) do
+      {:ok, results} -> results
+      {:error, _} -> []
+    end
   end
 
   @doc """
-  Performs complete basic screening and returns structured results.
+  Performs complete enhanced screening and returns structured results.
+  Phase 2: Uses cached data and function-optimized queries.
   """
   def perform_basic_screening(organization) do
-    count = basic_applicability_count(organization)
+    # Use cached screening results
+    ApplicabilityCache.get_screening_results(organization)
+  end
+
+  @doc """
+  Direct database query for screening (used by cache on miss).
+  Phase 2: Filters to 'Making' function laws only.
+  """
+  def direct_screening_query(organization) do
+    count = direct_count_query(organization)
     preview = basic_applicability_preview(organization, 5)
     
     %{
       applicable_law_count: count,
       sample_regulations: preview,
-      screening_method: "phase1_basic",
+      screening_method: "phase2_function_optimized",
       organization_profile: extract_matching_attributes(organization),
       generated_at: DateTime.utc_now(),
-      confidence_level: "basic"
+      confidence_level: "enhanced",
+      function_filter: "Making laws only (duty-creating)"
     }
   end
 
-  # Private helper functions
+  # Phase 2 Helper Functions
 
-  defp build_basic_query(organization) do
-    from(u in UkLrt, as: :uk_lrt)
-    |> where([uk_lrt: u], u.live == "✔ In force")
-    |> add_sector_filter(organization)
-    |> add_geographic_filter(organization)
-    |> add_size_filter(organization)
-    |> order_by([uk_lrt: u], [desc: u.year, desc: u.latest_amend_date])
-  end
-
-  defp add_sector_filter(query, organization) do
-    case get_industry_sector(organization) do
-      nil -> query
-      sector -> 
-        family_value = map_sector_to_family(sector)
-        if family_value do
-          where(query, [uk_lrt: u], u.family == ^family_value)
-        else
-          query
-        end
-    end
-  end
-
-  defp add_geographic_filter(query, organization) do
+  @doc """
+  Get the primary geographic extent for an organization.
+  Phase 2: Simplified geographic matching for function-optimized queries.
+  """
+  def get_applicable_geo_extent(organization) do
     case get_headquarters_region(organization) do
-      nil -> query
-      region -> 
-        applicable_extents = map_region_to_extents(region)
-        where(query, [uk_lrt: u], u.geo_extent in ^applicable_extents)
+      "england" -> "England"
+      "wales" -> "Wales"
+      "scotland" -> "Scotland"
+      "northern_ireland" -> "Northern Ireland"
+      "great_britain" -> "Great Britain"
+      "united_kingdom" -> "United Kingdom"
+      _ -> "United Kingdom"  # Default fallback
     end
   end
 
-  defp add_size_filter(query, organization) do
-    case get_total_employees(organization) do
-      nil -> query
-      employee_count when is_integer(employee_count) ->
-        # Add size-based filtering logic here
-        # For Phase 1, we'll keep it simple and not filter by size
-        query
-      _ -> query
-    end
-  end
+  # Organization attribute extraction helpers (public for cache usage)
 
-  defp count_matching_regulations(query) do
-    # Remove ORDER BY for count queries as PostgreSQL doesn't allow it
-    query
-    |> exclude(:order_by)
-    |> select([uk_lrt: u], count(u.id))
-    |> Repo.one()
-    |> case do
-      nil -> 0
-      count -> count
-    end
-  end
-
-  defp limit_results(query, limit) do
-    limit(query, ^limit)
-  end
-
-  defp execute_query(query) do
-    query
-    |> select([uk_lrt: u], %{
-      id: u.id,
-      name: u.name,
-      title_en: u.title_en,
-      family: u.family,
-      geo_extent: u.geo_extent,
-      live: u.live,
-      year: u.year,
-      md_description: u.md_description
-    })
-    |> Repo.all()
-  end
-
-  # Organization attribute extraction helpers
-
-  defp get_industry_sector(organization) do
+  def get_industry_sector(organization) do
     get_core_profile_field(organization, "industry_sector")
   end
 
-  defp get_headquarters_region(organization) do
+  def get_headquarters_region(organization) do
     get_core_profile_field(organization, "headquarters_region")
   end
 
-  defp get_total_employees(organization) do
+  def get_total_employees(organization) do
     get_core_profile_field(organization, "total_employees")
   end
 

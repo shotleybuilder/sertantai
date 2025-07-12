@@ -113,6 +113,12 @@ defmodule Sertantai.UkLrt do
       allow_nil? true
       description "Date of most recent amendment"
     end
+    
+    # Phase 2 Critical Performance Field
+    attribute :function, :map do
+      allow_nil? true
+      description "Function of the law (JSONB): Enacting, Commencing, Amending, Revoking, Making"
+    end
   end
 
   actions do
@@ -213,15 +219,16 @@ defmodule Sertantai.UkLrt do
       )
     end
     
-    # Phase 1 Applicability Matching Actions
+    # Phase 2 Function-Optimized Applicability Matching Actions
     read :for_applicability_screening do
-      description "Get records for basic applicability screening"
+      description "Get records for duty-creating law screening (Making function only)"
       argument :family, :string, allow_nil?: true
       argument :geo_extent, :string, allow_nil?: true
       argument :live_status, :string, default: "✔ In force"
       argument :limit, :integer, default: 100
       
       filter expr(
+        fragment("? ? ?", function, "Making") and
         live == ^arg(:live_status) and
         if is_nil(^arg(:family)) do
           true
@@ -236,7 +243,7 @@ defmodule Sertantai.UkLrt do
       )
       
       prepare build(
-        select: [:id, :name, :title_en, :family, :geo_extent, :live, :year, :md_description, :duty_holder],
+        select: [:id, :name, :title_en, :family, :geo_extent, :function, :live, :year, :md_description, :duty_holder],
         sort: [year: :desc, latest_amend_date: :desc]
       )
       
@@ -244,12 +251,13 @@ defmodule Sertantai.UkLrt do
     end
     
     read :count_for_screening do
-      description "Count applicable records for screening"
+      description "Count applicable duty-creating records for screening (Making function only)"
       argument :family, :string, allow_nil?: true
       argument :geo_extent, :string, allow_nil?: true
       argument :live_status, :string, default: "✔ In force"
       
       filter expr(
+        fragment("? ? ?", function, "Making") and
         live == ^arg(:live_status) and
         if is_nil(^arg(:family)) do
           true
@@ -308,5 +316,15 @@ defmodule Sertantai.UkLrt do
       patch :update
       delete :destroy
     end
+  end
+
+  # Code interface for programmatic access
+  code_interface do
+    domain Sertantai.Domain
+    define :read
+    define :by_family, args: [:family]
+    define :by_family_ii, args: [:family_ii]
+    define :for_applicability_screening, args: [:family, :geo_extent, :live_status, :limit]
+    define :count_for_screening, args: [:family, :geo_extent, :live_status]
   end
 end

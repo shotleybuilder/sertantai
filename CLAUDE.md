@@ -145,3 +145,71 @@ mix esbuild sertantai       # Build JavaScript with ESBuild
 - Using Local Docker PostgreSQL (for development)
 - Switch Between Databases
 - Using model context protocol (mcp) server tidewave: /home/jason/mcp-proxy http://localhost:4000/tidewave/mcp
+
+<!-- usage-rules-start -->
+<!-- usage-rules-header -->
+# Usage Rules
+
+**IMPORTANT**: Consult these usage rules early and often when working with the packages listed below. 
+Before attempting to use any of these packages or to discover if you should use them, review their 
+usage rules to understand the correct patterns, conventions, and best practices.
+<!-- usage-rules-header-end -->
+
+<!-- ash-start -->
+## ash usage
+_A declarative, extensible framework for building Elixir applications.
+_
+
+[ash usage rules](deps/ash/usage-rules.md)
+<!-- ash-end -->
+<!-- ash_graphql-start -->
+## ash_graphql usage
+_The extension for building GraphQL APIs with Ash
+_
+
+[ash_graphql usage rules](deps/ash_graphql/usage-rules.md)
+<!-- ash_graphql-end -->
+<!-- ash_json_api-start -->
+## ash_json_api usage
+_The JSON:API extension for the Ash Framework.
+_
+
+[ash_json_api usage rules](deps/ash_json_api/usage-rules.md)
+<!-- ash_json_api-end -->
+<!-- ash_postgres-start -->
+## ash_postgres usage
+_The PostgreSQL data layer for Ash Framework
+_
+
+[ash_postgres usage rules](deps/ash_postgres/usage-rules.md)
+<!-- ash_postgres-end -->
+<!-- usage_rules:elixir-start -->
+## usage_rules:elixir usage
+[usage_rules:elixir usage rules](deps/usage_rules/usage-rules/elixir.md)
+<!-- usage_rules:elixir-end -->
+<!-- usage_rules:otp-start -->
+## usage_rules:otp usage
+[usage_rules:otp usage rules](deps/usage_rules/usage-rules/otp.md)
+<!-- usage_rules:otp-end -->
+<!-- igniter-start -->
+## igniter usage
+_A code generation and project patching framework
+_
+
+[igniter usage rules](deps/igniter/usage-rules.md)
+<!-- igniter-end -->
+<!-- ash_phoenix-start -->
+## ash_phoenix usage
+_Utilities for integrating Ash and Phoenix
+_
+
+[ash_phoenix usage rules](deps/ash_phoenix/usage-rules.md)
+<!-- ash_phoenix-end -->
+<!-- ash_authentication-start -->
+## ash_authentication usage
+_Authentication extension for the Ash Framework.
+_
+
+[ash_authentication usage rules](deps/ash_authentication/usage-rules.md)
+<!-- ash_authentication-end -->
+<!-- usage-rules-end -->

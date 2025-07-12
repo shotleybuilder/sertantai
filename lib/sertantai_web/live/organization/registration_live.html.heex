@@ -1,0 +1,356 @@
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto">
+    <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Register Organization
+        </h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+          Phase 1: Basic Applicability Screening
+        </p>
+      </div>
+
+      <%= if @step == :basic_info do %>
+        <!-- Step 1: Basic Information Form -->
+        <div class="mt-8">
+          <.form 
+            for={%{}}
+            as={:organization}
+            phx-change="validate"
+            phx-submit="register_organization"
+            class="space-y-6"
+          >
+            <!-- Organization Name -->
+            <div>
+              <label for="organization_name" class="block text-sm font-medium text-gray-700">
+                Organization Name *
+              </label>
+              <div class="mt-1">
+                <input
+                  type="text"
+                  name="organization[organization_name]"
+                  id="organization_name"
+                  value={@form_data["organization_name"] || ""}
+                  required
+                  class={[
+                    "appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm",
+                    if(has_error?(@form_errors, :organization_name), do: "border-red-300", else: "border-gray-300")
+                  ]}
+                  placeholder="Enter your organization name"
+                />
+              </div>
+              <%= if has_error?(@form_errors, :organization_name) do %>
+                <p class="mt-2 text-sm text-red-600">
+                  <%= get_error_message(@form_errors, :organization_name) %>
+                </p>
+              <% end %>
+            </div>
+
+            <!-- Organization Type -->
+            <div>
+              <label for="organization_type" class="block text-sm font-medium text-gray-700">
+                Organization Type *
+              </label>
+              <div class="mt-1">
+                <select
+                  name="organization[organization_type]"
+                  id="organization_type"
+                  required
+                  class={[
+                    "block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm",
+                    if(has_error?(@form_errors, :organization_type), do: "border-red-300", else: "border-gray-300")
+                  ]}
+                >
+                  <option value="">Select organization type</option>
+                  <%= for {label, value} <- @organization_types do %>
+                    <option 
+                      value={value} 
+                      selected={@form_data["organization_type"] == value}
+                    >
+                      <%= label %>
+                    </option>
+                  <% end %>
+                </select>
+              </div>
+              <%= if has_error?(@form_errors, :organization_type) do %>
+                <p class="mt-2 text-sm text-red-600">
+                  <%= get_error_message(@form_errors, :organization_type) %>
+                </p>
+              <% end %>
+            </div>
+
+            <!-- Industry Sector -->
+            <div>
+              <label for="industry_sector" class="block text-sm font-medium text-gray-700">
+                Primary Industry Sector *
+              </label>
+              <div class="mt-1">
+                <select
+                  name="organization[industry_sector]"
+                  id="industry_sector"
+                  required
+                  class={[
+                    "block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm",
+                    if(has_error?(@form_errors, :industry_sector), do: "border-red-300", else: "border-gray-300")
+                  ]}
+                >
+                  <option value="">Select industry sector</option>
+                  <%= for {label, value} <- @industry_sectors do %>
+                    <option 
+                      value={value} 
+                      selected={@form_data["industry_sector"] == value}
+                    >
+                      <%= label %>
+                    </option>
+                  <% end %>
+                </select>
+              </div>
+              <%= if has_error?(@form_errors, :industry_sector) do %>
+                <p class="mt-2 text-sm text-red-600">
+                  <%= get_error_message(@form_errors, :industry_sector) %>
+                </p>
+              <% end %>
+            </div>
+
+            <!-- Headquarters Region -->
+            <div>
+              <label for="headquarters_region" class="block text-sm font-medium text-gray-700">
+                Headquarters Region *
+              </label>
+              <div class="mt-1">
+                <select
+                  name="organization[headquarters_region]"
+                  id="headquarters_region"
+                  required
+                  class={[
+                    "block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm",
+                    if(has_error?(@form_errors, :headquarters_region), do: "border-red-300", else: "border-gray-300")
+                  ]}
+                >
+                  <option value="">Select headquarters region</option>
+                  <%= for {label, value} <- @regions do %>
+                    <option 
+                      value={value} 
+                      selected={@form_data["headquarters_region"] == value}
+                    >
+                      <%= label %>
+                    </option>
+                  <% end %>
+                </select>
+              </div>
+              <%= if has_error?(@form_errors, :headquarters_region) do %>
+                <p class="mt-2 text-sm text-red-600">
+                  <%= get_error_message(@form_errors, :headquarters_region) %>
+                </p>
+              <% end %>
+            </div>
+
+            <!-- Total Employees (Optional) -->
+            <div>
+              <label for="total_employees" class="block text-sm font-medium text-gray-700">
+                Total Employees (Optional)
+              </label>
+              <div class="mt-1">
+                <input
+                  type="number"
+                  name="organization[total_employees]"
+                  id="total_employees"
+                  value={@form_data["total_employees"] || ""}
+                  min="1"
+                  class={[
+                    "appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm",
+                    if(has_error?(@form_errors, :total_employees), do: "border-red-300", else: "border-gray-300")
+                  ]}
+                  placeholder="e.g. 50"
+                />
+              </div>
+              <%= if has_error?(@form_errors, :total_employees) do %>
+                <p class="mt-2 text-sm text-red-600">
+                  <%= get_error_message(@form_errors, :total_employees) %>
+                </p>
+              <% end %>
+            </div>
+
+            <!-- Submit Button -->
+            <div>
+              <button
+                type="submit"
+                disabled={@loading}
+                class={[
+                  "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500",
+                  if(@loading, do: "bg-gray-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700")
+                ]}
+              >
+                <%= if @loading do %>
+                  <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                <% else %>
+                  Register & Screen Organization
+                <% end %>
+              </button>
+            </div>
+          </.form>
+        </div>
+      <% end %>
+
+      <%= if @step == :results do %>
+        <!-- Step 2: Screening Results -->
+        <div class="mt-8">
+          <div class="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-green-800">
+                  Organization Successfully Registered
+                </h3>
+                <div class="mt-2 text-sm text-green-700">
+                  <p><strong><%= @organization.organization_name %></strong> has been registered for Phase 1 applicability screening.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screening Results -->
+          <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                Basic Applicability Screening Results
+              </h3>
+              
+              <%= if @screening_result do %>
+                <!-- Summary Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div class="bg-blue-50 p-4 rounded-lg">
+                    <dt class="text-sm font-medium text-blue-800">Potentially Applicable Laws</dt>
+                    <dd class="mt-1 text-2xl font-semibold text-blue-900">
+                      <%= format_number(@screening_result.applicable_law_count) %>
+                    </dd>
+                  </div>
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <dt class="text-sm font-medium text-gray-800">Screening Method</dt>
+                    <dd class="mt-1 text-sm text-gray-900 capitalize">
+                      <%= String.replace(@screening_result.screening_method, "_", " ") %>
+                    </dd>
+                  </div>
+                </div>
+
+                <!-- Organization Profile Used -->
+                <div class="mb-6">
+                  <h4 class="text-md font-medium text-gray-900 mb-2">Organization Profile Used for Screening:</h4>
+                  <div class="bg-gray-50 p-3 rounded-md text-sm">
+                    <%= if @screening_result.organization_profile do %>
+                      <div class="space-y-1">
+                        <p><strong>Industry:</strong> <%= @screening_result.organization_profile.industry_sector || "Not specified" %></p>
+                        <p><strong>Region:</strong> <%= @screening_result.organization_profile.headquarters_region || "Not specified" %></p>
+                        <p><strong>Employees:</strong> <%= @screening_result.organization_profile.total_employees || "Not specified" %></p>
+                        <%= if @screening_result.organization_profile.mapped_family do %>
+                          <p><strong>Legal Family:</strong> <%= @screening_result.organization_profile.mapped_family %></p>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+
+                <!-- Sample Regulations -->
+                <%= if @screening_result.sample_regulations && length(@screening_result.sample_regulations) > 0 do %>
+                  <div class="mb-6">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Sample Applicable Regulations:</h4>
+                    <div class="space-y-3">
+                      <%= for regulation <- @screening_result.sample_regulations do %>
+                        <div class="border border-gray-200 rounded-md p-3">
+                          <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                              <h5 class="text-sm font-medium text-gray-900">
+                                <%= regulation.title_en || regulation.name || "Untitled Regulation" %>
+                              </h5>
+                              <%= if regulation.family do %>
+                                <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mt-1">
+                                  <%= regulation.family %>
+                                </span>
+                              <% end %>
+                              <%= if regulation.geo_extent do %>
+                                <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mt-1 ml-2">
+                                  <%= regulation.geo_extent %>
+                                </span>
+                              <% end %>
+                              <%= if regulation.year do %>
+                                <span class="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full mt-1 ml-2">
+                                  <%= regulation.year %>
+                                </span>
+                              <% end %>
+                            </div>
+                          </div>
+                          <%= if regulation.md_description do %>
+                            <p class="mt-2 text-sm text-gray-600 line-clamp-2">
+                              <%= String.slice(regulation.md_description, 0, 150) %><%= if String.length(regulation.md_description) > 150, do: "..." %>
+                            </p>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% else %>
+                  <div class="mb-6">
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                      <div class="flex">
+                        <div class="flex-shrink-0">
+                          <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <div class="ml-3">
+                          <h3 class="text-sm font-medium text-yellow-800">
+                            No Specific Regulations Found
+                          </h3>
+                          <div class="mt-2 text-sm text-yellow-700">
+                            <p>No regulations were found matching your organization's profile. This could be due to:</p>
+                            <ul class="list-disc pl-5 mt-1">
+                              <li>Your industry sector may not have specific UK legal requirements</li>
+                              <li>Your profile may need more specific details</li>
+                              <li>Enhanced screening in future phases may find applicable laws</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+
+                <!-- Metadata -->
+                <div class="text-xs text-gray-500 mb-4">
+                  <p>Generated at: <%= Calendar.strftime(@screening_result.generated_at, "%Y-%m-%d %H:%M:%S UTC") %></p>
+                  <p>Confidence Level: <%= String.capitalize(@screening_result.confidence_level) %></p>
+                </div>
+              <% end %>
+
+              <!-- Action Buttons -->
+              <div class="flex space-x-3">
+                <button
+                  type="button"
+                  phx-click="restart"
+                  class="flex-1 bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Register Another Organization
+                </button>
+                <button
+                  type="button"
+                  phx-click="continue_to_phase2"
+                  class="flex-1 bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Enhanced Screening (Phase 2)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

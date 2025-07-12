@@ -72,6 +72,47 @@ defmodule Sertantai.UkLrt do
       description "Creation timestamp"
       writable? false
     end
+    
+    # Phase 1 Essential Fields for Applicability Matching
+    attribute :title_en, :string do
+      allow_nil? true
+      description "English title of the legal instrument"
+    end
+    
+    attribute :geo_extent, :string do
+      allow_nil? true
+      description "Geographic extent of application"
+    end
+    
+    attribute :geo_region, :string do
+      allow_nil? true
+      description "Specific geographic regions covered"
+    end
+    
+    attribute :duty_holder, :map do
+      allow_nil? true
+      description "Entities with specific duties under this law (JSONB)"
+    end
+    
+    attribute :power_holder, :map do
+      allow_nil? true
+      description "Entities granted powers by this law (JSONB)"
+    end
+    
+    attribute :rights_holder, :map do
+      allow_nil? true
+      description "Entities granted rights by this law (JSONB)"
+    end
+    
+    attribute :purpose, :map do
+      allow_nil? true
+      description "Legal purposes and objectives (JSONB)"
+    end
+    
+    attribute :latest_amend_date, :date do
+      allow_nil? true
+      description "Date of most recent amendment"
+    end
   end
 
   actions do
@@ -170,6 +211,59 @@ defmodule Sertantai.UkLrt do
         select: [:id, :family, :family_ii, :year, :live],
         load: [:display_name]
       )
+    end
+    
+    # Phase 1 Applicability Matching Actions
+    read :for_applicability_screening do
+      description "Get records for basic applicability screening"
+      argument :family, :string, allow_nil?: true
+      argument :geo_extent, :string, allow_nil?: true
+      argument :live_status, :string, default: "✔ In force"
+      argument :limit, :integer, default: 100
+      
+      filter expr(
+        live == ^arg(:live_status) and
+        if is_nil(^arg(:family)) do
+          true
+        else
+          family == ^arg(:family)
+        end and
+        if is_nil(^arg(:geo_extent)) do
+          true
+        else
+          geo_extent == ^arg(:geo_extent)
+        end
+      )
+      
+      prepare build(
+        select: [:id, :name, :title_en, :family, :geo_extent, :live, :year, :md_description, :duty_holder],
+        sort: [year: :desc, latest_amend_date: :desc]
+      )
+      
+      pagination offset?: true, default_limit: 100
+    end
+    
+    read :count_for_screening do
+      description "Count applicable records for screening"
+      argument :family, :string, allow_nil?: true
+      argument :geo_extent, :string, allow_nil?: true
+      argument :live_status, :string, default: "✔ In force"
+      
+      filter expr(
+        live == ^arg(:live_status) and
+        if is_nil(^arg(:family)) do
+          true
+        else
+          family == ^arg(:family)
+        end and
+        if is_nil(^arg(:geo_extent)) do
+          true
+        else
+          geo_extent == ^arg(:geo_extent)
+        end
+      )
+      
+      prepare build(select: [:id])
     end
   end
 

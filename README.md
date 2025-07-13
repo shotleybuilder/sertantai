@@ -94,14 +94,30 @@ After setup, you can login with:
 
 Visit [`localhost:4000`](http://localhost:4000) from your browser.
 
-### Production Deployment
+## Documentation
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+📚 **[Complete Documentation](./docs/)** - Comprehensive guides and references
 
-## Learn more
+### Quick Links
+- **🔧 [Developer Setup](./docs/dev/DEVELOPMENT.md)** - Detailed development environment setup
+- **👥 [User Guide](./docs/user/)** - Platform features and usage
+- **🏗️ [Architecture](./docs/dev/)** - Technical implementation details
+- **🔍 [Troubleshooting](./docs/dev/authentication-troubleshooting.md)** - Common issues and solutions
 
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+### For Developers
+- [Multi-Location Organizations](./docs/dev/multi-location-organization-plan.md) - Implementation plan
+- [Authentication Issues](./docs/dev/authentication-troubleshooting.md) - Common auth problems
+- [Persistence Strategy](./docs/dev/persistence/) - Data persistence architecture
+
+### For Users
+- [Getting Started](./docs/user/) - Platform overview and basic usage
+- [Organization Management](./docs/user/) - Profile and location setup
+- [Compliance Screening](./docs/user/) - Regulation discovery and assessment
+
+## Technology Stack
+
+- **Phoenix 1.7+** - Web framework with LiveView
+- **Ash Framework 3.0+** - Business logic and data modeling
+- **PostgreSQL** - Primary database
+- **Tailwind CSS** - Styling framework
+- **Docker** - Development environment

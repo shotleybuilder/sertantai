@@ -6,7 +6,8 @@ defmodule Sertantai.Organizations.Organization do
 
   use Ash.Resource,
     data_layer: AshPostgres.DataLayer,
-    domain: Sertantai.Organizations
+    domain: Sertantai.Organizations,
+    extensions: [AshAdmin.Resource]
 
   postgres do
     table "organizations"
@@ -252,6 +253,11 @@ defmodule Sertantai.Organizations.Organization do
     define :create, args: [:email_domain, :organization_name, :created_by_user_id]
     define :read
     define :update
+  end
+
+  # Admin configuration  
+  admin do
+    actor? false
   end
 
   # Helper functions for building core profile

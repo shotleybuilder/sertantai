@@ -4,10 +4,16 @@ defmodule Sertantai.Sync do
   Handles sync configurations, selected records, and sync operations.
   """
   
-  use Ash.Domain
+  use Ash.Domain,
+    extensions: [AshAdmin.Domain]
 
   resources do
     resource Sertantai.Sync.SyncConfiguration
     resource Sertantai.Sync.SelectedRecord
+  end
+
+  # Admin configuration
+  admin do
+    show? true
   end
 end

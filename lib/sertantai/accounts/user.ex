@@ -5,7 +5,7 @@ defmodule Sertantai.Accounts.User do
   
   use Ash.Resource,
     domain: Sertantai.Accounts,
-    extensions: [AshAuthentication],
+    extensions: [AshAuthentication, AshAdmin.Resource],
     data_layer: AshPostgres.DataLayer
 
   postgres do
@@ -76,5 +76,10 @@ defmodule Sertantai.Accounts.User do
   relationships do
     has_many :sync_configurations, Sertantai.Sync.SyncConfiguration
     has_many :selected_records, Sertantai.Sync.SelectedRecord
+  end
+
+  # Admin configuration
+  admin do
+    actor? true
   end
 end

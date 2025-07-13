@@ -5,7 +5,7 @@ defmodule Sertantai.Domain do
   """
   
   use Ash.Domain,
-    extensions: [AshGraphql.Domain, AshJsonApi.Domain]
+    extensions: [AshGraphql.Domain, AshJsonApi.Domain, AshAdmin.Domain]
 
   resources do
     resource Sertantai.UkLrt
@@ -22,5 +22,10 @@ defmodule Sertantai.Domain do
   # JSON API configuration
   json_api do
     authorize? false
+  end
+
+  # Admin configuration
+  admin do
+    show? true
   end
 end

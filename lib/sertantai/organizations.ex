@@ -4,12 +4,18 @@ defmodule Sertantai.Organizations do
   applicability screening for Phase 1 implementation.
   """
 
-  use Ash.Domain
+  use Ash.Domain,
+    extensions: [AshAdmin.Domain]
 
   resources do
     resource Sertantai.Organizations.Organization
     resource Sertantai.Organizations.OrganizationUser
     resource Sertantai.Organizations.OrganizationLocation
     resource Sertantai.Organizations.LocationScreening
+  end
+
+  # Admin configuration
+  admin do
+    show? true
   end
 end

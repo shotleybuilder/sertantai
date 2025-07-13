@@ -41,6 +41,7 @@ defmodule Sertantai.MixProject do
       {:ash_json_api, "~> 1.0"},
       {:ash_authentication, "~> 4.0"},
       {:ash_authentication_phoenix, "~> 2.0"},
+      {:ash_admin, "~> 0.13.11"},
       {:bcrypt_elixir, "~> 3.0"},
       {:absinthe, "~> 1.7"},
       {:absinthe_plug, "~> 1.5"},

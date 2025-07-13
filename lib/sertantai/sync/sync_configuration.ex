@@ -6,6 +6,7 @@ defmodule Sertantai.Sync.SyncConfiguration do
   
   use Ash.Resource,
     domain: Sertantai.Sync,
+    extensions: [AshAdmin.Resource],
     data_layer: AshPostgres.DataLayer
 
   postgres do
@@ -115,6 +116,11 @@ defmodule Sertantai.Sync.SyncConfiguration do
     secret = Application.fetch_env!(:sertantai, :token_signing_secret)
     # Derive a 32-byte key from the secret
     :crypto.hash(:sha256, secret)
+  end
+
+  # Admin configuration
+  admin do
+    actor? false
   end
 
   # Public function to decrypt credentials

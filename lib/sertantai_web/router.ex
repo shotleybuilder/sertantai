@@ -1,6 +1,7 @@
 defmodule SertantaiWeb.Router do
   use SertantaiWeb, :router
   use AshAuthentication.Phoenix.Router
+  import AshAdmin.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -29,9 +30,49 @@ defmodule SertantaiWeb.Router do
     plug :skip_authentication_for_liveview
   end
 
+  pipeline :require_admin_authentication do
+    plug :require_admin_authentication
+  end
+
   # Custom authentication plug for LiveView - pass through, auth handled in LiveView mount
   def skip_authentication_for_liveview(conn, _opts) do
     conn
+  end
+
+  # Authentication plug for API routes (bearer token based)
+  def require_authenticated_user(conn, _opts) do
+    case AshAuthentication.Plug.Helpers.retrieve_from_bearer(conn, Sertantai.Accounts.User) do
+      {:ok, user} when not is_nil(user) ->
+        # User is authenticated via bearer token
+        conn
+        |> Plug.Conn.assign(:current_user, user)
+        |> AshAuthentication.Plug.Helpers.set_actor(user)
+
+      _ ->
+        # User is not authenticated, return 401
+        conn
+        |> Plug.Conn.put_status(:unauthorized)
+        |> Phoenix.Controller.json(%{error: "Authentication required"})
+        |> Plug.Conn.halt()
+    end
+  end
+
+  # Authentication plug for admin routes (session based)
+  def require_admin_authentication(conn, _opts) do
+    case AshAuthentication.Plug.Helpers.retrieve_from_session(conn, Sertantai.Accounts.User) do
+      {:ok, user} when not is_nil(user) ->
+        # User is authenticated, continue
+        conn
+        |> Plug.Conn.assign(:current_user, user)
+        |> AshAuthentication.Plug.Helpers.set_actor(user)
+
+      _ ->
+        # User is not authenticated, redirect to login
+        conn
+        |> Phoenix.Controller.put_flash(:error, "You must be logged in to access this page.")
+        |> Phoenix.Controller.redirect(to: "/login")
+        |> Plug.Conn.halt()
+    end
   end
 
 
@@ -113,6 +154,12 @@ defmodule SertantaiWeb.Router do
   end
   
   # JSON API endpoints will be defined by the resource directly
+
+  # Ash Admin routes - secured with authentication  
+  scope "/admin" do
+    pipe_through [:browser, :require_admin_authentication]
+    ash_admin("/")
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:sertantai, :dev_routes) do

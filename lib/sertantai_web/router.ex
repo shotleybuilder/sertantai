@@ -57,14 +57,25 @@ defmodule SertantaiWeb.Router do
     end
   end
 
-  # Authentication plug for admin routes (session based)
+  # Authentication plug for admin routes (session based with role check)
   def require_admin_authentication(conn, _opts) do
     case AshAuthentication.Plug.Helpers.retrieve_from_session(conn, Sertantai.Accounts.User) do
       {:ok, user} when not is_nil(user) ->
-        # User is authenticated, continue
-        conn
-        |> Plug.Conn.assign(:current_user, user)
-        |> AshAuthentication.Plug.Helpers.set_actor(user)
+        # Check if user has admin or support role
+        case user.role do
+          role when role in [:admin, :support] ->
+            # User has admin access, continue
+            conn
+            |> Plug.Conn.assign(:current_user, user)
+            |> AshAuthentication.Plug.Helpers.set_actor(user)
+
+          _ ->
+            # User doesn't have admin privileges
+            conn
+            |> Phoenix.Controller.put_flash(:error, "You don't have permission to access the admin area.")
+            |> Phoenix.Controller.redirect(to: "/dashboard")
+            |> Plug.Conn.halt()
+        end
 
       _ ->
         # User is not authenticated, redirect to login

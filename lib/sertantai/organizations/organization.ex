@@ -7,7 +7,8 @@ defmodule Sertantai.Organizations.Organization do
   use Ash.Resource,
     data_layer: AshPostgres.DataLayer,
     domain: Sertantai.Organizations,
-    extensions: [AshAdmin.Resource]
+    extensions: [AshAdmin.Resource],
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "organizations"
@@ -246,6 +247,23 @@ defmodule Sertantai.Organizations.Organization do
         _ -> {:error, "Core profile must be a valid map"}
       end
     end
+  end
+
+  # Role-based authorization policies
+  policies do
+    # Admins and support can read all organizations
+    policy action_type(:read) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :support)
+    end
+
+    # Admins can perform all actions on organizations
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    # Users can read and update their own organizations (via organization_users relationship)
+    # This would require additional relationship setup which we'll implement later
   end
 
   code_interface do

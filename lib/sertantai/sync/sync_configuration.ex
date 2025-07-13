@@ -7,7 +7,8 @@ defmodule Sertantai.Sync.SyncConfiguration do
   use Ash.Resource,
     domain: Sertantai.Sync,
     extensions: [AshAdmin.Resource],
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "sync_configurations"
@@ -116,6 +117,36 @@ defmodule Sertantai.Sync.SyncConfiguration do
     secret = Application.fetch_env!(:sertantai, :token_signing_secret)
     # Derive a 32-byte key from the secret
     :crypto.hash(:sha256, secret)
+  end
+
+  # Role-based authorization policies
+  policies do
+    # Admins can read all sync configurations
+    policy action_type(:read) do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    # Support can read sync configs but not modify them
+    policy action_type(:read) do
+      authorize_if actor_attribute_equals(:role, :support)
+    end
+
+    # Admins can perform all actions on sync configurations
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    # Users can only access their own sync configurations
+    policy action_type([:read, :update, :destroy]) do
+      authorize_if expr(user_id == ^actor(:id))
+    end
+
+    # Users can create sync configurations for themselves
+    policy action_type(:create) do
+      authorize_if actor_attribute_equals(:role, :member)
+      authorize_if actor_attribute_equals(:role, :professional)
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
   end
 
   # Admin configuration

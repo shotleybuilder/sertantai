@@ -232,3 +232,26 @@ _
 [ash_authentication usage rules](deps/ash_authentication/usage-rules.md)
 <!-- ash_authentication-end -->
 <!-- usage-rules-end -->
+
+## Implementation Plan Progress Tracking Rules
+
+**⚠️ PLAN PROGRESS TRACKING RULE:**
+- **ALWAYS update implementation plan documents** with completion status as work progresses
+- **MARK phases/sections as completed** with ✅ **COMPLETED** when fully implemented
+- **MARK phases/sections as partially complete** with ⚠️ **PARTIALLY COMPLETE** when some work remains
+- **MARK phases/sections as to-do** with 📋 **TO DO** when not yet started
+- **UPDATE implementation timeline tables** with status columns showing current progress
+- **ANNOTATE code sections** in plans with implementation notes and file locations
+
+**📝 PHASE COMPLETION SUMMARY RULE:**
+- **SAVE helpful phase completion summaries** from conversations to the correct section of implementation plans
+- **DOCUMENT what was actually implemented** vs what was originally planned
+- **INCLUDE file paths and key code locations** for implemented features
+- **UPDATE conclusion sections** with current implementation status and remaining work
+- **MAINTAIN implementation status percentages** (e.g., "85% complete") in plan summaries
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

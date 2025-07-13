@@ -1,0 +1,178 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Header -->
+  <div class="bg-white border-b border-gray-200 px-4 py-4 sm:px-6">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <.link navigate={~p"/dashboard"} class="text-gray-400 hover:text-gray-600">
+          <.icon name="hero-arrow-left" class="h-5 w-5" />
+        </.link>
+        <div>
+          <h1 class="text-lg font-semibold text-gray-900">AI Profile Assistant</h1>
+          <p class="text-sm text-gray-500"><%= @organization.name %></p>
+        </div>
+      </div>
+      
+      <!-- Progress indicator -->
+      <div class="flex items-center space-x-3">
+        <div class="text-sm text-gray-500">
+          <%= round(@completion_percentage * 100) %>% complete
+        </div>
+        <div class="w-24 bg-gray-200 rounded-full h-2">
+          <div 
+            class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            style={"width: #{@completion_percentage * 100}%"}
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat container -->
+  <div class="flex flex-col h-[calc(100vh-80px)]">
+    <!-- Conversation history -->
+    <div 
+      id="conversation-container"
+      class="flex-1 overflow-y-auto p-4 space-y-4"
+      phx-hook="ScrollToBottom"
+    >
+      <%= for message <- @conversation_history do %>
+        <div class={[
+          "flex",
+          if(message.type == "user", do: "justify-end", else: "justify-start")
+        ]}>
+          <div class={[
+            "max-w-md px-4 py-2 rounded-lg",
+            if(message.type == "user",
+              do: "bg-blue-600 text-white",
+              else: "bg-white text-gray-900 border border-gray-200"
+            )
+          ]}>
+            <%= if message.type == "ai" do %>
+              <div class="flex items-start space-x-2">
+                <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                  <.icon name="hero-cpu-chip" class="h-3 w-3 text-blue-600" />
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm whitespace-pre-wrap"><%= message.content %></p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    <%= Calendar.strftime(message.timestamp, "%H:%M") %>
+                  </p>
+                </div>
+              </div>
+            <% else %>
+              <p class="text-sm whitespace-pre-wrap"><%= message.content %></p>
+              <p class="text-xs text-blue-200 mt-1 text-right">
+                <%= Calendar.strftime(message.timestamp, "%H:%M") %>
+              </p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- AI thinking indicator -->
+      <%= if @ai_thinking do %>
+        <div class="flex justify-start">
+          <div class="bg-white text-gray-900 border border-gray-200 max-w-md px-4 py-2 rounded-lg">
+            <div class="flex items-center space-x-2">
+              <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                <.icon name="hero-cpu-chip" class="h-3 w-3 text-blue-600" />
+              </div>
+              <div class="flex space-x-1">
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s;"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Input area -->
+    <div class="bg-white border-t border-gray-200 p-4">
+      <form 
+        phx-submit="send_message" 
+        class="flex space-x-3"
+        phx-change="update_message"
+      >
+        <div class="flex-1">
+          <label for="message" class="sr-only">Your message</label>
+          <textarea
+            id="message"
+            name="message"
+            rows="1"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm resize-none"
+            placeholder="Type your response..."
+            value={@current_message}
+            disabled={@ai_thinking}
+            phx-hook="AutoResize"
+          ></textarea>
+        </div>
+        <button
+          type="submit"
+          disabled={@ai_thinking || @current_message == ""}
+          class={[
+            "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm",
+            "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+            if(@ai_thinking || @current_message == "",
+              do: "text-gray-400 bg-gray-100 cursor-not-allowed",
+              else: "text-white bg-blue-600 hover:bg-blue-700"
+            )
+          ]}
+        >
+          <%= if @ai_thinking do %>
+            <.icon name="hero-arrow-path" class="h-4 w-4 animate-spin" />
+          <% else %>
+            Send
+          <% end %>
+        </button>
+      </form>
+      
+      <!-- Helpful hints -->
+      <div class="mt-2 text-xs text-gray-500">
+        💡 Be as detailed as possible in your responses for the most accurate regulatory guidance.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Auto-scroll to bottom when new messages arrive
+  window.addEventListener("phx:update", () => {
+    const container = document.getElementById("conversation-container");
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  });
+
+  // Auto-resize textarea
+  const hooks = {
+    AutoResize: {
+      mounted() {
+        this.el.addEventListener("input", () => {
+          this.el.style.height = "auto";
+          this.el.style.height = this.el.scrollHeight + "px";
+        });
+      }
+    },
+    
+    ScrollToBottom: {
+      mounted() {
+        this.scrollToBottom();
+      },
+      updated() {
+        this.scrollToBottom();
+      },
+      scrollToBottom() {
+        this.el.scrollTop = this.el.scrollHeight;
+      }
+    }
+  };
+
+  if (window.liveSocket) {
+    Object.assign(window.liveSocket.hooks, hooks);
+  } else {
+    window.hooks = hooks;
+  }
+</script>

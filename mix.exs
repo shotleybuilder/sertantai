@@ -73,7 +73,11 @@ defmodule Sertantai.MixProject do
       {:bandit, "~> 1.5"},
       {:tidewave, "~> 0.1", only: [:dev]},
       {:usage_rules, "~> 0.1", only: [:dev]},
-      {:cachex, "~> 3.6"}
+      {:cachex, "~> 3.6"},
+      {:ash_ai, "~> 0.1"},
+      {:langchain, "~> 0.3"},
+      {:openai, "~> 0.6"},
+      {:req, "~> 0.5"}
     ]
   end
 

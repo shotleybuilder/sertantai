@@ -22,6 +22,8 @@ defmodule Sertantai.Application do
       Sertantai.UserSelections,
       # Start Phase 2 applicability cache for high-performance screening
       {Cachex, name: :applicability_cache, limit: 10_000},
+      # Start AI services supervisor for Phase 3 functionality
+      Sertantai.AI.Supervisor,
       # Start to serve requests, typically the last entry
       SertantaiWeb.Endpoint
     ]
@@ -29,7 +31,16 @@ defmodule Sertantai.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Sertantai.Supervisor]
-    Supervisor.start_link(children, opts)
+    
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        # Start AI session recovery process after supervisor is ready
+        Sertantai.AI.Supervisor.start_recovery_process()
+        {:ok, pid}
+      
+      error ->
+        error
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

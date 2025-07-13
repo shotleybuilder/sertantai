@@ -66,6 +66,9 @@ defmodule SertantaiWeb.Router do
     
     # Phase 1 Organization Registration and Screening
     live "/organizations/register", Organization.RegistrationLive
+    
+    # Phase 2 Progressive Applicability Screening
+    live "/applicability/progressive", Applicability.ProgressiveScreeningLive
   end
 
   # GraphQL API

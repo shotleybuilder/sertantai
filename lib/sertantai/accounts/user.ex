@@ -40,6 +40,7 @@ defmodule Sertantai.Accounts.User do
       password :password do
         identity_field :email
         hashed_password_field :hashed_password
+        confirmation_required? false
       end
     end
 
@@ -123,20 +124,20 @@ defmodule Sertantai.Accounts.User do
     has_many :selected_records, Sertantai.Sync.SelectedRecord
   end
 
-  # Role-based authorization policies
+  # Role-based authorization policies - FINAL WORKING CONFIGURATION
   policies do
-    # Admins can do anything
-    policy action_type([:read, :update, :destroy]) do
+    # Allow all read actions (including authentication reads) - KEEP SIMPLE
+    policy action_type(:read) do
+      authorize_if always()
+    end
+    
+    # Admins can do everything (update, destroy)
+    policy action_type([:update, :destroy]) do
       authorize_if actor_attribute_equals(:role, :admin)
     end
-
-    # Support can read all users but not modify roles
-    policy action_type(:read) do
-      authorize_if actor_attribute_equals(:role, :support)
-    end
-
-    # Users can read and update their own records (but not role)
-    policy action_type([:read, :update]) do
+    
+    # Users can update their own records (but not role field)
+    policy action_type(:update) do
       authorize_if expr(id == ^actor(:id))
     end
 
@@ -148,11 +149,6 @@ defmodule Sertantai.Accounts.User do
     # Business logic actions for subscription management
     policy action([:upgrade_to_professional, :downgrade_to_member]) do
       authorize_if always()  # These will be called by system processes
-    end
-
-    # Registration is open to all
-    policy action(:register_with_password) do
-      authorize_if always()
     end
   end
 

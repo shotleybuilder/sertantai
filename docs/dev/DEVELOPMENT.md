@@ -135,17 +135,48 @@ elixir data_migration.exs stats
 
 After running the setup or seeding, you can login with:
 
-- **Admin User:**
+- **Admin User (admin role):**
   - Email: `admin@sertantai.com`
   - Password: `admin123!`
+  - Role: `admin` - Full system access, user management, admin interface access
 
-- **Test User:**
-  - Email: `test@sertantai.com`
-  - Password: `test123!`
-
-- **Demo User:**
+- **Support User (support role):**
   - Email: `demo@sertantai.com`
   - Password: `demo123!`
+  - Role: `support` - Customer support access, read-only admin interface
+
+- **Professional User (professional role):**
+  - Email: `test@sertantai.com`
+  - Password: `test123!`
+  - Role: `professional` - Paid subscription features, AI screening, sync tools
+
+- **Member User (member role):**
+  - Email: `member@sertantai.com`
+  - Password: `member123!`
+  - Role: `member` - Basic registered user, limited features, no AI or sync
+
+- **Guest User (guest role):**
+  - Email: `guest@sertantai.com`
+  - Password: `guest123!`
+  - Role: `guest` - Minimal access, pre-registration state
+
+**Note:** If you have issues logging in, run `mix run scripts/fix_user_passwords.exs` to ensure passwords are properly hashed.
+
+#### Role Hierarchy & Permissions
+
+The system implements a 5-tier role hierarchy:
+
+1. **admin** - Full system access, can manage all resources and users
+2. **support** - Customer support team, read access to help users, limited admin access
+3. **professional** - Paid users with AI features and sync capabilities
+4. **member** - Basic registered users with limited features
+5. **guest** - Default role for new users before registration
+
+#### Admin Interface Access
+
+- **Admin URL:** http://localhost:4000/admin
+- **Access:** Only `admin` and `support` roles can access
+- **Professional/Member users:** Will be redirected to dashboard with error message
 
 ### Stopping the Development Environment
 

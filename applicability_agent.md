@@ -2,7 +2,7 @@
 # Applicability Screening AI Agent
 
 ## 🎯 Overview
-This document outlines strategies to build an **AI-driven applicability screening agent** to match UK Legal Register and Tracker (UK LRT) records to duty holders, based on information provided by a user through an AI chat interface. Built using **Elixir/Phoenix** with **Ash Framework** for business logic, this system leverages Docker Offload for scalable AI workloads deployed on **Digital Ocean**.
+This document outlines strategies to build an **AI-driven applicability screening agent** to match UK Legal Register and Tracker (UK LRT) records to duty holders, based on information provided by a user through an AI chat interface. Built using **Elixir/Phoenix** with **Ash Framework** for business logic, this system leverages **AshAI** for native AI integration deployed on **Digital Ocean**.
 
 ---
 
@@ -81,13 +81,13 @@ This document outlines strategies to build an **AI-driven applicability screenin
 
 ### Phase 3: AI Question Generation & Data Discovery
 **Goal:** Conversational data collection using AI  
-**Duration:** 8-10 weeks | **Complexity:** High | **Dependencies:** Phase 2 + Docker Offload
+**Duration:** 8-10 weeks | **Complexity:** High | **Dependencies:** Phase 2 + AshAI Integration
 
 #### Technical Scope
-- Docker Offload integration for AI services
+- AshAI framework integration for native AI actions
 - Conversational UI for organization profiling
-- AI-to-schema field mapping
-- Fallback mechanisms for AI service failures
+- AI-to-schema field mapping via Ash resources
+- Type-safe AI responses with automatic validation
 
 #### Key Features
 1. **Intelligent Question Generation**
@@ -103,17 +103,17 @@ This document outlines strategies to build an **AI-driven applicability screenin
    - Session management and conversation persistence
 
 3. **AI Integration & Reliability**
-   - Docker Offload service integration
-   - Graceful degradation when AI unavailable
+   - AshAI native integration with Ash actions as AI tools
+   - Built-in fallback mechanisms using Ash patterns
    - Confidence scoring for AI-discovered data
-   - Error handling and retry mechanisms
+   - Type-safe error handling via Ash changesets
 
 #### Success Criteria & Deliverables
 - ✅ AI discovers 80%+ relevant organization attributes
 - ✅ Question generation responds within 5 seconds
-- ✅ Conversation-to-schema mapping 90% accurate
-- ✅ Graceful degradation when AI services fail
-- ✅ AI service uptime monitoring and alerting
+- ✅ Conversation-to-schema mapping 90% accurate via AshAI
+- ✅ Graceful degradation using Ash resource patterns
+- ✅ AI integration monitoring via standard Ash telemetry
 
 ### Phase 4: Comprehensive Analysis & Legal Review
 **Goal:** Full applicability assessment with legal validation  
@@ -345,10 +345,10 @@ defmodule Sertantai.Performance do
   
   def graceful_degradation_strategies() do
     # Fallback mechanisms:
-    # - AI service failures → basic rule-based screening
+    # - AI service failures → basic rule-based screening via Ash actions
     # - Database performance issues → cached results
     # - High load conditions → queue-based processing
-    # - Docker Offload unavailable → local processing mode
+    # - AshAI unavailable → static form-based data collection
   end
 end
 ```
@@ -407,22 +407,23 @@ end
 
 ---
 
-## 🐳 Using Docker Offload
+## 🤖 Using AshAI Framework
 
 ### Why
-- Run heavy workloads (like LLM applicability screening) on remote GPUs transparently, while keeping your local Docker stack lean.
+- Native Elixir AI integration with type safety and Ash Framework patterns, eliminating external service complexity.
 
-### How in this architecture (Digital Ocean deployment)
-- Main Phoenix container handles:
+### How in this architecture
+- Main Phoenix application handles:
   - Phoenix LiveView web UI
-  - Ash Framework business logic
+  - Ash Framework business logic with AI-powered actions
   - PostgreSQL database (existing uk_lrt schema)
   - User selection persistence system
-- Docker Offload handles:
-  - Generating applicability explanations
-  - Running embedding or large language tasks
-  - Vector similarity computations
-- Keeps main deployment lean, only offloads AI-intensive tasks when needed.
+- AshAI Framework provides:
+  - AI-powered Ash actions for question generation
+  - Type-safe conversation-to-schema mapping
+  - Built-in prompt management and validation
+  - Native Elixir performance without network overhead
+- Keeps deployment simple while adding powerful AI capabilities.
 
 ### Four-Phase Progressive Pipeline
 
@@ -468,22 +469,22 @@ end
 
 #### Phase 3: AI Question Generation & Data Discovery
 ```
-[Profile Analysis → AI Gap Detection]
+[Profile Analysis → AI Gap Detection via AshAI]
    ↓
-[Docker Offload → Intelligent Question Generation]
-   │ ├─ Sector-specific questioning
-   │ ├─ Risk assessment priorities
-   │ ├─ Compliance framework analysis
-   │ └─ Follow-up question logic
+[Native Ash Actions → Intelligent Question Generation]
+   │ ├─ Sector-specific questioning (prompt actions)
+   │ ├─ Risk assessment priorities (AI calculations)
+   │ ├─ Compliance framework analysis (AI tools)
+   │ └─ Follow-up question logic (Ash changes)
    ↓
 [Conversational Interface → Natural Language Collection]
-   │ ├─ Chat UI for complex attributes
-   │ ├─ Context-aware responses
-   │ ├─ Session management
-   │ └─ Graceful AI service degradation
+   │ ├─ Chat UI with AshPhoenix forms
+   │ ├─ Context-aware responses via AI actions
+   │ ├─ Session management using Ash resources
+   │ └─ Type-safe error handling
    ↓
 [AI-to-Schema Mapping → Enhanced Profile]
-   └─ 80%+ organization attribute discovery
+   └─ 80%+ organization attribute discovery with validation
 ```
 
 #### Phase 4: Comprehensive Analysis & Legal Review
@@ -515,14 +516,14 @@ end
 | **Data Storage** | PostgreSQL + Ash | + JSONB indexing | + Caching layer | + Version control |
 | **UI Framework** | Phoenix LiveView | + Real-time updates | + Chat interface | + Results dashboard |
 | **Business Logic** | Basic Ash queries | + Complex filtering | + AI integration | + Multi-layer matching |
-| **AI Integration** | None | None | Docker Offload | + Explanation generation |
+| **AI Integration** | None | None | AshAI Framework | + Explanation generation |
 | **Performance** | Basic queries | Optimized + cached | + AI monitoring | + Legal review queue |
 | **Legal Framework** | Basic validation | Data quality checks | + AI disclaimers | Full compliance framework |
 
 ### Implementation Dependencies by Phase
 - **Phase 1:** Core Ash + Phoenix + PostgreSQL
 - **Phase 2:** + Database optimization + Caching + Performance monitoring  
-- **Phase 3:** + Docker Offload + AI services + Fallback mechanisms
+- **Phase 3:** + AshAI integration + AI-powered Ash actions + Type-safe fallbacks
 - **Phase 4:** + Legal review workflow + Professional validation + Compliance framework
 
 ## ✅ Progressive Benefits
@@ -1393,10 +1394,10 @@ end
   ```
 - **Immediate Feedback System**: Live counters, threshold notifications, sector matches
 
-### Phase 2: AI-Enhanced Deep Screening Implementation  
-- **Context-Aware Question Generation**: AI analyzes basic profile to ask targeted questions
-- **Organization Schema Integration**: Map AI-discovered attributes to schema fields
-- **Docker Offload LLM Processing**: Complex analysis of organization-regulation alignment
+### Phase 3: AI-Enhanced Deep Screening Implementation  
+- **Context-Aware Question Generation**: AshAI analyzes basic profile via Ash actions
+- **Organization Schema Integration**: Type-safe mapping via Ash attribute validation
+- **Native AI Processing**: In-process AI analysis using AshAI framework
 
 ### Phase 3: Comprehensive Results & Persistence
 - **Enhanced UserSelections**: Store complete organization profile + regulation matches
@@ -1472,20 +1473,14 @@ end
 **3. Semantic Role Matching (AI-Enhanced)**
 ```elixir
 def semantic_role_match(user_role, user_context, uk_lrt_record) do
-  # Use Docker Offload for LLM-based role similarity
-  prompt = """
-  User Role: #{user_role}
-  User Context: #{user_context}
-  
-  Legal Role Fields:
-  - Duty Holders: #{uk_lrt_record.duty_holder}
-  - General Roles: #{uk_lrt_record.role}
-  - Power Holders: #{uk_lrt_record.power_holder}
-  
-  Rate the applicability (0-100) and explain which role field matches.
-  """
-  
-  DockerOffload.llm_request(prompt)
+  # Use AshAI for LLM-based role similarity with type safety
+  Sertantai.AI.RoleAnalysis.analyze_role_match!(
+    user_role: user_role,
+    user_context: user_context,
+    duty_holders: uk_lrt_record.duty_holder,
+    general_roles: uk_lrt_record.role,
+    power_holders: uk_lrt_record.power_holder
+  )
 end
 ```
 

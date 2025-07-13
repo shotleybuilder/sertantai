@@ -29,7 +29,7 @@ defmodule SertantaiWeb.Router do
     plug :skip_authentication_for_liveview
   end
 
-  # Custom authentication plug for LiveView - just pass through for now
+  # Custom authentication plug for LiveView - pass through, auth handled in LiveView mount
   def skip_authentication_for_liveview(conn, _opts) do
     conn
   end

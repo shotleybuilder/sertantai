@@ -6,14 +6,24 @@ defmodule SertantaiWeb.AuthLive do
 
   alias Sertantai.Accounts.User
 
-  def mount(_params, _session, socket) do
+  def mount(_params, session, socket) do
     # Store return_to from connect_params if available
     return_to = get_connect_params(socket)["return_to"] || ~p"/dashboard"
     
-    {:ok, 
-     socket
-     |> assign(:page_title, "Authentication")
-     |> assign(:return_to, return_to)}
+    # Load current user from session if available
+    socket = 
+      socket
+      |> assign(:page_title, "Authentication")
+      |> assign(:return_to, return_to)
+      |> assign_current_user_from_session(session)
+    
+    {:ok, socket}
+  end
+
+  # Helper to load current user from session using AshAuthentication
+  defp assign_current_user_from_session(socket, session) do
+    # Use AshAuthentication.Phoenix.LiveSession to properly assign resources
+    AshAuthentication.Phoenix.LiveSession.assign_new_resources(socket, session)
   end
 
   def handle_params(params, _uri, socket) do

@@ -88,6 +88,137 @@ form = AshPhoenix.Form.for_action(current_user, :update, domain: Sertantai.Accou
 form = AshPhoenix.Form.for_action(User, :update, initial: current_user)
 ```
 
+### 5. LiveView Testing Authentication
+
+**Problem**: 
+LiveView tests failing with authentication redirects when using standard test helpers.
+
+**Root Cause**: 
+Standard Phoenix test helpers like `conn |> assign(:current_user, user)` don't work with LiveView because LiveView gets authentication from session, not connection assigns.
+
+**Solution**:
+1. **Proper Test Helper**: Use AshAuthentication session storage in test helpers:
+   ```elixir
+   # In test/support/conn_case.ex
+   def log_in_user(conn, user) do
+     conn
+     |> Phoenix.ConnTest.init_test_session(%{})
+     |> AshAuthentication.Plug.Helpers.store_in_session(user)
+   end
+   ```
+
+2. **LiveView Mount Pattern**: Ensure LiveView uses same authentication loading as working LiveViews:
+   ```elixir
+   def mount(_params, session, socket) do
+     # Load current user from session using AshAuthentication
+     socket = AshAuthentication.Phoenix.LiveSession.assign_new_resources(socket, session)
+     current_user = socket.assigns[:current_user]
+
+     if current_user do
+       # User authenticated logic
+     else
+       # Redirect to login
+       {:ok, redirect(socket, to: ~p"/login")}
+     end
+   end
+   ```
+
+3. **Test Redirect Assertions**: When testing LiveView redirects, use proper pattern matching:
+   ```elixir
+   # For users without organization (redirect to register)
+   assert {:error, {:redirect, %{to: "/organizations/register", flash: flash}}} = 
+     live(conn, ~p"/organizations")
+   assert flash["info"] == "You haven't registered an organization yet."
+
+   # For successful page loads
+   {:ok, view, html} = live(conn, ~p"/organizations")
+   assert html =~ "Organization Profile"
+   ```
+
+### 6. Ash Resource Action Specification
+
+**Problem**: 
+Runtime errors like "Required primary update action" when calling `Ash.update/3`.
+
+**Root Cause**: 
+Ash resources may not have a primary update action defined, requiring explicit action specification.
+
+**Solution**:
+Always specify the action explicitly:
+```elixir
+# Correct - specify action explicitly
+case Ash.update(organization, %{
+  organization_name: params["organization_name"],
+  organization_attrs: attrs
+}, action: :update, domain: MyApp.Organizations) do
+
+# Incorrect - relying on primary action
+case Ash.update(organization, %{...}, domain: MyApp.Organizations) do
+```
+
+### 7. Form Parameter Handling in LiveView
+
+**Problem**: 
+Form submissions failing with mismatched parameter names between template and handle_event.
+
+**Root Cause**: 
+Phoenix forms generate parameters based on the form's `for` attribute, not the resource name.
+
+**Solution**:
+1. **Template Form Declaration**: 
+   ```elixir
+   <.form for={@form} id="org-form" phx-submit="save">
+   ```
+
+2. **Handle Event Pattern Matching**:
+   ```elixir
+   # Correct - matches the form name
+   def handle_event("save", %{"form" => params}, socket) do
+
+   # Incorrect - assumes resource name
+   def handle_event("save", %{"organization" => params}, socket) do
+   ```
+
+3. **Test Form Submission**:
+   ```elixir
+   # Correct - use "form" key
+   view
+   |> form("#org-form", form: %{organization_name: "New Name"})
+   |> render_submit()
+
+   # Incorrect - using resource name
+   view
+   |> form("#org-form", organization: %{organization_name: "New Name"})
+   |> render_submit()
+   ```
+
+### 8. Error Handling in LiveView Updates
+
+**Problem**: 
+Protocol errors when trying to convert Ash error structs to forms.
+
+**Root Cause**: 
+Ash returns `Ash.Error.Invalid` structs on validation failures, which can't be converted to Phoenix forms.
+
+**Solution**:
+Handle error cases by creating fresh forms:
+```elixir
+case Ash.update(resource, params, action: :update, domain: MyDomain) do
+  {:ok, updated_resource} ->
+    # Success case
+    form = AshPhoenix.Form.for_action(updated_resource, :update, domain: MyDomain)
+    {:noreply, assign(socket, :form, to_form(form))}
+
+  {:error, _error} ->
+    # Error case - create fresh form, don't try to convert error
+    form = AshPhoenix.Form.for_action(original_resource, :update, domain: MyDomain)
+    {:noreply, 
+     socket
+     |> assign(:form, to_form(form))
+     |> put_flash(:error, "Update failed")}
+end
+```
+
 ## Database Setup Critical Rules
 
 ⚠️ **GOLDEN RULE**: After any code changes involving Ash resources, ALWAYS run:
@@ -130,6 +261,16 @@ Before implementing authentication features:
 - [ ] Use correct AshPhoenix.Form syntax for existing vs new records
 - [ ] Run migration pipeline before starting server
 - [ ] Test authentication flow with existing test users
+
+Before writing LiveView tests with authentication:
+
+- [ ] Use `AshAuthentication.Plug.Helpers.store_in_session/2` in test helpers
+- [ ] Ensure LiveView mount uses `AshAuthentication.Phoenix.LiveSession.assign_new_resources/2`
+- [ ] Test both authenticated and unauthenticated access patterns
+- [ ] Use proper redirect assertion patterns for LiveView tests
+- [ ] Specify Ash actions explicitly in all update operations
+- [ ] Match form parameter names correctly in handle_event functions
+- [ ] Handle Ash error responses properly without trying to convert to forms
 
 ## Common Debugging Steps
 

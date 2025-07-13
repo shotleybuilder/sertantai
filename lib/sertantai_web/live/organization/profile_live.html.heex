@@ -1,0 +1,263 @@
+<div class="max-w-4xl mx-auto">
+  <div class="bg-white shadow rounded-lg">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Organization Profile</h1>
+          <p class="text-sm text-gray-600 mt-1">
+            View and manage your organization information
+          </p>
+        </div>
+        <%= if @editing do %>
+          <div class="flex gap-2">
+            <button phx-click="cancel" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+              Cancel
+            </button>
+            <button form="org-form" type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+              Save Changes
+            </button>
+          </div>
+        <% else %>
+          <button phx-click="toggle_edit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+            Edit Profile
+          </button>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="px-6 py-6">
+      <%= if @editing do %>
+        <!-- Edit Form -->
+        <.form for={@form} id="org-form" phx-submit="save" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <.input
+                field={@form[:organization_name]}
+                type="text"
+                label="Organization Name"
+                value={@organization.core_profile["organization_name"]}
+                required
+              />
+            </div>
+            
+            <div>
+              <.input
+                field={@form[:organization_type]}
+                type="select"
+                label="Organization Type"
+                value={@organization.core_profile["organization_type"]}
+                options={[
+                  {"Limited Company", "limited_company"},
+                  {"Public Limited Company", "public_limited_company"},
+                  {"Partnership", "partnership"},
+                  {"Sole Trader", "sole_trader"},
+                  {"Limited Liability Partnership", "limited_liability_partnership"},
+                  {"Charity", "charity"},
+                  {"Government Agency", "government_agency"},
+                  {"Other", "other"}
+                ]}
+                required
+              />
+            </div>
+
+            <div>
+              <.input
+                field={@form[:industry_sector]}
+                type="select"
+                label="Industry Sector"
+                value={@organization.core_profile["industry_sector"]}
+                options={[
+                  {"Construction", "construction"},
+                  {"Manufacturing", "manufacturing"},
+                  {"Technology", "technology"},
+                  {"Financial Services", "financial_services"},
+                  {"Healthcare", "healthcare"},
+                  {"Education", "education"},
+                  {"Retail", "retail"},
+                  {"Transportation", "transportation"},
+                  {"Agriculture", "agriculture"},
+                  {"Energy", "energy"},
+                  {"Other", "other"}
+                ]}
+                required
+              />
+            </div>
+
+            <div>
+              <.input
+                field={@form[:headquarters_region]}
+                type="select"
+                label="Headquarters Region"
+                value={@organization.core_profile["headquarters_region"]}
+                options={[
+                  {"United Kingdom", "united_kingdom"},
+                  {"England", "england"},
+                  {"Scotland", "scotland"},
+                  {"Wales", "wales"},
+                  {"Northern Ireland", "northern_ireland"},
+                  {"European Union", "european_union"},
+                  {"United States", "united_states"},
+                  {"Other", "other"}
+                ]}
+                required
+              />
+            </div>
+
+            <div>
+              <.input
+                field={@form[:total_employees]}
+                type="number"
+                label="Total Employees"
+                value={@organization.core_profile["total_employees"]}
+                min="1"
+              />
+            </div>
+
+            <div>
+              <.input
+                field={@form[:registration_number]}
+                type="text"
+                label="Registration Number"
+                value={@organization.core_profile["registration_number"]}
+                placeholder="Optional"
+              />
+            </div>
+
+            <div>
+              <.input
+                field={@form[:primary_sic_code]}
+                type="text"
+                label="Primary SIC Code"
+                value={@organization.core_profile["primary_sic_code"]}
+                placeholder="Optional"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Email Domain</label>
+              <div class="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border">
+                <%= @organization.email_domain %>
+                <span class="text-xs text-gray-500 ml-2">(Cannot be changed)</span>
+              </div>
+            </div>
+          </div>
+        </.form>
+      <% else %>
+        <!-- View Mode -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-1">
+            <dt class="text-sm font-medium text-gray-500">Organization Name</dt>
+            <dd class="text-sm text-gray-900"><%= @organization.core_profile["organization_name"] %></dd>
+          </div>
+
+          <div class="space-y-1">
+            <dt class="text-sm font-medium text-gray-500">Organization Type</dt>
+            <dd class="text-sm text-gray-900">
+              <%= format_organization_type(@organization.core_profile["organization_type"]) %>
+            </dd>
+          </div>
+
+          <div class="space-y-1">
+            <dt class="text-sm font-medium text-gray-500">Industry Sector</dt>
+            <dd class="text-sm text-gray-900">
+              <%= format_industry_sector(@organization.core_profile["industry_sector"]) %>
+            </dd>
+          </div>
+
+          <div class="space-y-1">
+            <dt class="text-sm font-medium text-gray-500">Headquarters Region</dt>
+            <dd class="text-sm text-gray-900">
+              <%= format_region(@organization.core_profile["headquarters_region"]) %>
+            </dd>
+          </div>
+
+          <div class="space-y-1">
+            <dt class="text-sm font-medium text-gray-500">Total Employees</dt>
+            <dd class="text-sm text-gray-900">
+              <%= if @organization.core_profile["total_employees"] do %>
+                <%= format_number(@organization.core_profile["total_employees"]) %>
+              <% else %>
+                <span class="text-gray-400">Not specified</span>
+              <% end %>
+            </dd>
+          </div>
+
+          <div class="space-y-1">
+            <dt class="text-sm font-medium text-gray-500">Email Domain</dt>
+            <dd class="text-sm text-gray-900"><%= @organization.email_domain %></dd>
+          </div>
+
+          <%= if @organization.core_profile["registration_number"] do %>
+            <div class="space-y-1">
+              <dt class="text-sm font-medium text-gray-500">Registration Number</dt>
+              <dd class="text-sm text-gray-900"><%= @organization.core_profile["registration_number"] %></dd>
+            </div>
+          <% end %>
+
+          <%= if @organization.core_profile["primary_sic_code"] do %>
+            <div class="space-y-1">
+              <dt class="text-sm font-medium text-gray-500">Primary SIC Code</dt>
+              <dd class="text-sm text-gray-900"><%= @organization.core_profile["primary_sic_code"] %></dd>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Profile Completeness -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-medium text-gray-900">Profile Completeness</h3>
+            <span class="text-sm font-medium text-blue-600">
+              <%= Float.round(Decimal.to_float(@organization.profile_completeness_score) * 100, 1) %>%
+            </span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={"width: #{Decimal.to_float(@organization.profile_completeness_score) * 100}%"}
+            >
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            Complete all fields to improve your profile score and get better regulatory recommendations.
+          </p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <.link 
+              navigate={~p"/applicability/progressive"}
+              class="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <div class="flex-shrink-0">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h4 class="text-sm font-medium text-gray-900">Run Applicability Screening</h4>
+                <p class="text-sm text-gray-500">Check which regulations apply to your organization</p>
+              </div>
+            </.link>
+
+            <.link 
+              navigate={~p"/records"}
+              class="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <div class="flex-shrink-0">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z"/>
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h4 class="text-sm font-medium text-gray-900">View Records</h4>
+                <p class="text-sm text-gray-500">Access your regulatory records and data</p>
+              </div>
+            </.link>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

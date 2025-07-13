@@ -81,6 +81,7 @@ defmodule Sertantai.Organizations.Organization do
     defaults [:read]
     
     create :create do
+      primary? true
       accept [:email_domain, :organization_name, :core_profile, :created_by_user_id]
       
       argument :organization_attrs, :map do

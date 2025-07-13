@@ -68,7 +68,8 @@ defmodule SertantaiWeb.Router do
       live "/sync-configs/:id/edit", SyncConfigLive.Edit
       live "/records", RecordSelectionLive, :index
     
-    # Phase 1 Organization Registration and Screening
+    # Phase 1 Organization Registration and Screening  
+    live "/organizations", Organization.ProfileLive
     live "/organizations/register", Organization.RegistrationLive
     
     # Phase 2 Progressive Applicability Screening

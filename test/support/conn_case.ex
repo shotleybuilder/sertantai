@@ -35,4 +35,14 @@ defmodule SertantaiWeb.ConnCase do
     Sertantai.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc """
+  Setup helper that logs in a user for testing authenticated routes.
+  Uses AshAuthentication.Phoenix to properly store user in session.
+  """
+  def log_in_user(conn, user) do
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{})
+    |> AshAuthentication.Plug.Helpers.store_in_session(user)
+  end
 end

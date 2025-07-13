@@ -28,7 +28,7 @@ defmodule Sertantai.Repo.Migrations.AddAiSessionIndexes do
     create index(:ai_organization_analyses, [:organization_id])
     create index(:ai_organization_analyses, [:analysis_type])
     create index(:ai_organization_analyses, [:organization_id, :analysis_type])
-    create index(:ai_organization_analyses, [:created_at])
+    create index(:ai_organization_analyses, [:inserted_at])
     
     # Question generation indexes  
     create index(:ai_question_generations, [:organization_id])
@@ -40,8 +40,8 @@ defmodule Sertantai.Repo.Migrations.AddAiSessionIndexes do
     # Response processing indexes
     create index(:ai_response_processings, [:session_id])
     create index(:ai_response_processings, [:validation_status])
-    create index(:ai_response_processings, [:session_id, :created_at])
-    create index(:ai_response_processings, [:created_at])
+    create index(:ai_response_processings, [:session_id, :inserted_at])
+    create index(:ai_response_processings, [:inserted_at])
     
     # Partial indexes for specific scenarios
     
@@ -66,7 +66,7 @@ defmodule Sertantai.Repo.Migrations.AddAiSessionIndexes do
       name: :ai_sessions_abandoned_cleanup)
       
     # High priority questions index
-    create index(:ai_question_generations, [:organization_id, :created_at], 
+    create index(:ai_question_generations, [:organization_id, :inserted_at], 
       where: "priority_score > 0.8", 
       name: :ai_questions_high_priority)
   end

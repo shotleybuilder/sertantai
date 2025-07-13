@@ -59,6 +59,13 @@ mix ecto.reset              # Drop and recreate database
 mix ecto.setup              # Create, migrate, and seed database
 ```
 
+**⚠️ GOLDEN RULE**: After any code changes involving Ash resources, ALWAYS run:
+1. `mix ash.codegen --check` (generate any needed migrations)
+2. `mix ecto.migrate` (apply pending migrations)
+3. THEN start the server with `mix phx.server`
+
+**Never let the app run ahead of the database schema!**
+
 ### Testing
 ```bash
 mix test                    # Run all tests (with database setup)

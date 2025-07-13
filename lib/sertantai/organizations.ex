@@ -9,5 +9,7 @@ defmodule Sertantai.Organizations do
   resources do
     resource Sertantai.Organizations.Organization
     resource Sertantai.Organizations.OrganizationUser
+    resource Sertantai.Organizations.OrganizationLocation
+    resource Sertantai.Organizations.LocationScreening
   end
 end

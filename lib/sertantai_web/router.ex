@@ -72,8 +72,23 @@ defmodule SertantaiWeb.Router do
     live "/organizations", Organization.ProfileLive
     live "/organizations/register", Organization.RegistrationLive
     
+    # Multi-location Management (Phase 2)
+    live "/organizations/locations", Organization.LocationManagementLive
+    live "/organizations/locations/new", Organization.LocationManagementLive, :new
+    live "/organizations/locations/:id/edit", Organization.LocationManagementLive, :edit
+    
     # Phase 2 Progressive Applicability Screening
     live "/applicability/progressive", Applicability.ProgressiveScreeningLive
+    
+    # Location-specific screening routes
+    live "/applicability/location/:location_id", Applicability.LocationScreeningLive
+    live "/applicability/location/:location_id/progressive", Applicability.LocationScreeningLive, :progressive
+    
+    # Organization-wide aggregate screening
+    live "/applicability/organization/aggregate", Applicability.OrganizationAggregateScreeningLive
+    
+    # Smart routing based on single vs multi-location
+    live "/applicability/smart", Applicability.SmartScreeningRouteLive
     end
   end
 

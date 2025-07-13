@@ -73,6 +73,11 @@ mix test --only <tag>       # Run specific tagged tests
 mix test test/path/file.exs # Run specific test file
 ```
 
+**⚠️ PORT CONFLICT RULE**: 
+- **Port 4000 is reserved** for Tidewave MCP server integration
+- **Always test Phoenix server on port 4001** using `PORT=4001 mix phx.server`
+- **Never kill processes on port 4000** - this breaks MCP connectivity
+
 ### Asset Management
 ```bash
 mix assets.setup            # Install Tailwind and ESBuild
@@ -129,6 +134,13 @@ mix esbuild sertantai       # Build JavaScript with ESBuild
 - **TO START LOCAL DB**: Use `sertantai-dev` command or `docker-compose up -d postgres`
 - **CONNECTION**: `postgresql://postgres:postgres@localhost:5432/sertantai_dev`
 - **PRODUCTION DB**: Supabase PostgreSQL (read-only access for data imports only)
+
+**⚠️ MIGRATION SAFETY RULES:**
+- **ALWAYS check existing schema** before creating migrations with `mix ecto.migrations`
+- **NEVER assume table structure** - use `\d table_name` in psql or check existing migrations
+- **VERIFY resource snapshots** in `priv/resource_snapshots/` before running `mix ash.codegen`
+- **TEST migrations safely** by checking generated SQL in migration files before applying
+- **REMOVE EXISTING TABLES** from generated migrations if they already exist in the database
 
 **DATA IMPORT PROCESS:**
 - **Initial import**: Use `scripts/import_uk_lrt_data.exs` to import data from Supabase production

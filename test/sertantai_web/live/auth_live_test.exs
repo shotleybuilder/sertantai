@@ -354,12 +354,5 @@ defmodule SertantaiWeb.AuthLiveTest do
     end
   end
 
-  # Helper function to log in a user
-  defp log_in_user(conn, user) do
-    # This is a simplified version - in a real app you'd use the proper authentication mechanism
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> Plug.Conn.put_session(:current_user_id, user.id)
-    |> Plug.Conn.assign(:current_user, user)
-  end
+  # Note: Using imported log_in_user/2 from ConnCase
 end

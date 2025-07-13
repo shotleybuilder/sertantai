@@ -60,6 +60,16 @@ defmodule Sertantai.Organizations.Organization do
     has_many :organization_users, Sertantai.Organizations.OrganizationUser do
       destination_attribute :organization_id
     end
+    
+    # Multi-location support relationships
+    has_many :locations, Sertantai.Organizations.OrganizationLocation do
+      destination_attribute :organization_id
+    end
+
+    has_one :primary_location, Sertantai.Organizations.OrganizationLocation do
+      destination_attribute :organization_id
+      filter expr(is_primary_location == true)
+    end
   end
 
   calculations do
@@ -74,6 +84,28 @@ defmodule Sertantai.Organizations.Organization do
     
     calculate :phase2_completeness_percentage, :decimal, expr(phase2_completeness_score * 100) do
       description "Phase 2 profile completeness as a percentage (0-100)"
+    end
+    
+    # Multi-location support calculations
+    calculate :total_locations, :integer, expr(count(locations)) do
+      description "Total number of locations for this organization"
+    end
+    
+    calculate :active_locations, :integer, expr(count(locations, filter: locations.operational_status == :active)) do
+      description "Number of active locations for this organization"
+    end
+    
+    calculate :is_single_location, :boolean, expr(count(locations) == 1) do
+      description "True if organization has exactly one location"
+    end
+    
+    calculate :is_multi_location, :boolean, expr(count(locations) > 1) do
+      description "True if organization has multiple locations"
+    end
+
+    # Organization-level aggregated law count from all locations
+    calculate :total_applicable_laws, :integer, {Sertantai.Organizations.Calculations.AggregatedLawCount, []} do
+      description "Total number of applicable laws across all organization locations (deduplicated)"
     end
   end
 
@@ -121,6 +153,75 @@ defmodule Sertantai.Organizations.Organization do
             changeset
             |> Ash.Changeset.change_attribute(:core_profile, updated_profile)
             |> Ash.Changeset.change_attribute(:profile_completeness_score, completeness)
+        end
+      end
+    end
+    
+    # Multi-location support actions
+    update :add_location do
+      accept []
+      require_atomic? false
+      argument :location_data, :map, allow_nil?: false
+      
+      change fn changeset, _context ->
+        location_data = Ash.Changeset.get_argument(changeset, :location_data)
+        organization_id = Ash.Changeset.get_attribute(changeset, :id)
+        
+        # Create the location
+        location_attrs = Map.put(location_data, :organization_id, organization_id)
+        
+        case Ash.create(Sertantai.Organizations.OrganizationLocation, location_attrs, domain: Sertantai.Organizations) do
+          {:ok, _location} -> changeset
+          {:error, error} -> Ash.Changeset.add_error(changeset, error)
+        end
+      end
+    end
+
+    update :promote_to_multi_location do
+      accept []
+      require_atomic? false
+      argument :additional_location_data, :map, allow_nil?: false
+      
+      change fn changeset, _context ->
+        # When adding second location, ensure primary location is marked correctly
+        # This action will be used when transitioning from single to multi-location
+        additional_location_data = Ash.Changeset.get_argument(changeset, :additional_location_data)
+        organization_id = Ash.Changeset.get_attribute(changeset, :id)
+        
+        # First, ensure existing location (if any) is marked as primary
+        case Ash.read(Sertantai.Organizations.OrganizationLocation, 
+                     filter: [organization_id: organization_id], 
+                     domain: Sertantai.Organizations) do
+          {:ok, []} ->
+            # No existing locations, create first one as primary
+            primary_location_data = Map.put(additional_location_data, :is_primary_location, true)
+            location_attrs = Map.put(primary_location_data, :organization_id, organization_id)
+            
+            case Ash.create(Sertantai.Organizations.OrganizationLocation, location_attrs, domain: Sertantai.Organizations) do
+              {:ok, _location} -> changeset
+              {:error, error} -> Ash.Changeset.add_error(changeset, error)
+            end
+            
+          {:ok, [existing_location]} ->
+            # One existing location, mark it as primary and add the new one
+            Ash.update!(existing_location, %{is_primary_location: true}, domain: Sertantai.Organizations)
+            
+            location_attrs = Map.put(additional_location_data, :organization_id, organization_id)
+            case Ash.create(Sertantai.Organizations.OrganizationLocation, location_attrs, domain: Sertantai.Organizations) do
+              {:ok, _location} -> changeset
+              {:error, error} -> Ash.Changeset.add_error(changeset, error)
+            end
+            
+          {:ok, existing_locations} ->
+            # Multiple locations already exist, just add the new one
+            location_attrs = Map.put(additional_location_data, :organization_id, organization_id)
+            case Ash.create(Sertantai.Organizations.OrganizationLocation, location_attrs, domain: Sertantai.Organizations) do
+              {:ok, _location} -> changeset
+              {:error, error} -> Ash.Changeset.add_error(changeset, error)
+            end
+            
+          {:error, error} ->
+            Ash.Changeset.add_error(changeset, error)
         end
       end
     end

@@ -50,7 +50,7 @@ defmodule Sertantai.Accounts.User do
   end
 
   actions do
-    defaults [:read]
+    defaults [:read, :update]
 
     create :register_with_password do
       accept [:email, :first_name, :last_name, :timezone]

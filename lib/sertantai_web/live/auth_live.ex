@@ -22,7 +22,6 @@ defmodule SertantaiWeb.AuthLive do
 
   # Helper to load current user from session using AshAuthentication
   defp assign_current_user_from_session(socket, session) do
-    # Use AshAuthentication.Phoenix.LiveSession to properly assign resources
     AshAuthentication.Phoenix.LiveSession.assign_new_resources(socket, session)
   end
 
@@ -68,7 +67,7 @@ defmodule SertantaiWeb.AuthLive do
     current_user = socket.assigns[:current_user]
     
     if current_user do
-      form = AshPhoenix.Form.for_action(User, :update, current_user)
+      form = AshPhoenix.Form.for_action(current_user, :update, domain: Sertantai.Accounts)
       
       socket
       |> assign(:page_title, "Profile")
@@ -134,9 +133,26 @@ defmodule SertantaiWeb.AuthLive do
     {:noreply, socket}
   end
 
-  # Handle login form submission - no longer needed as form posts directly to auth controller
-  defp handle_login(socket, _user_params) do
-    {:noreply, socket}
+  # Handle login form submission
+  defp handle_login(socket, user_params) do
+    require Logger
+    Logger.info("Attempting login with params: #{inspect(user_params)}")
+    
+    form = AshPhoenix.Form.for_action(User, :sign_in_with_password, domain: Sertantai.Accounts)
+    
+    case AshPhoenix.Form.submit(form, params: user_params) do
+      {:ok, %{user: user, token: _token}} ->
+        # Store user in LiveView session for authenticated routes
+        {:noreply,
+         socket
+         |> assign(:current_user, user)
+         |> put_flash(:info, "Welcome back!")
+         |> redirect(to: socket.assigns.return_to)}
+
+      {:error, form} ->
+        Logger.error("Login failed: #{inspect(form.errors)}")
+        {:noreply, assign(socket, :form, to_form(form))}
+    end
   end
 
   # Handle registration form submission

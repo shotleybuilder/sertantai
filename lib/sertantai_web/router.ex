@@ -56,19 +56,24 @@ defmodule SertantaiWeb.Router do
   scope "/", SertantaiWeb do
     pipe_through [:browser, :require_authenticated_user_liveview]
 
-    live "/dashboard", DashboardLive
-    live "/profile", AuthLive, :profile
-    live "/change-password", AuthLive, :change_password
-    live "/sync-configs", SyncConfigLive.Index
-    live "/sync-configs/new", SyncConfigLive.New
-    live "/sync-configs/:id/edit", SyncConfigLive.Edit
-    live "/records", RecordSelectionLive, :index
+    live_session :authenticated, 
+      on_mount: AshAuthentication.Phoenix.LiveSession,
+      session: {AshAuthentication.Phoenix.LiveSession, :generate_session, []} do
+      
+      live "/dashboard", DashboardLive
+      live "/profile", AuthLive, :profile
+      live "/change-password", AuthLive, :change_password
+      live "/sync-configs", SyncConfigLive.Index
+      live "/sync-configs/new", SyncConfigLive.New
+      live "/sync-configs/:id/edit", SyncConfigLive.Edit
+      live "/records", RecordSelectionLive, :index
     
     # Phase 1 Organization Registration and Screening
     live "/organizations/register", Organization.RegistrationLive
     
     # Phase 2 Progressive Applicability Screening
     live "/applicability/progressive", Applicability.ProgressiveScreeningLive
+    end
   end
 
   # GraphQL API

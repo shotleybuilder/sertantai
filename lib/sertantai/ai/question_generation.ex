@@ -6,7 +6,8 @@ defmodule Sertantai.AI.QuestionGeneration do
 
   use Ash.Resource,
     domain: Sertantai.AI,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    extensions: [AshAI]
 
   attributes do
     uuid_primary_key :id
@@ -53,6 +54,151 @@ defmodule Sertantai.AI.QuestionGeneration do
 
   actions do
     defaults [:create, :read, :update, :destroy]
+
+    action :generate_contextual_questions, :map do
+      description "Generate contextual questions based on gap analysis"
+      
+      argument :gap_analysis, :map do
+        description "Results from organization gap analysis"
+        allow_nil? false
+      end
+      
+      argument :organization_context, :map do
+        description "Current organization information for context"
+        allow_nil? false
+      end
+      
+      argument :conversation_history, {:array, :map} do
+        description "Previous conversation context"
+        default []
+      end
+      
+      run fn input, _context ->
+        # Placeholder for AI question generation logic
+        # Will implement OpenAI integration with sector-specific templates
+        %{
+          questions: [
+            %{
+              question_text: "What is your organization's primary business activity?",
+              target_field: "business_activities",
+              priority: "high",
+              question_type: "new_information",
+              expected_response_type: "text",
+              follow_up_potential: "high"
+            },
+            %{
+              question_text: "In which regions do you operate?",
+              target_field: "operational_regions", 
+              priority: "high",
+              question_type: "new_information",
+              expected_response_type: "selection",
+              follow_up_potential: "medium"
+            }
+          ],
+          generation_metadata: %{
+            question_count: 2,
+            estimated_completion_time: 5,
+            conversation_strategy: "start_with_critical_fields"
+          }
+        }
+      end
+    end
+
+    action :prioritize_question_set, :map do
+      description "Prioritize and order questions for optimal conversation flow"
+      
+      argument :questions, {:array, :map} do
+        description "Set of questions to prioritize"
+        allow_nil? false
+      end
+      
+      argument :user_context, :map do
+        description "User context for personalization"
+        default %{}
+      end
+      
+      run fn input, _context ->
+        # Placeholder for question prioritization logic
+        # Will implement smart ordering based on regulatory impact and flow
+        %{
+          prioritized_questions: [
+            %{
+              question_text: "What is your organization's primary business activity?",
+              priority_score: 95,
+              order: 1,
+              rationale: "Critical for family mapping"
+            }
+          ],
+          conversation_strategy: "regulatory_impact_first",
+          estimated_completion_time: 8
+        }
+      end
+    end
+
+    action :generate_sector_questions, :map do
+      description "Generate sector-specific questions based on organization type"
+      
+      argument :sector, :string do
+        description "Industry sector (e.g., 'CONSTRUCTION', 'MANUFACTURING')"
+        allow_nil? false
+      end
+      
+      argument :organization_size, :string do
+        description "Organization size category (small/medium/large)"
+        allow_nil? false
+      end
+      
+      run fn input, _context ->
+        # Placeholder for sector-specific question logic
+        sector = input.arguments.sector
+        size = input.arguments.organization_size
+        
+        questions = case sector do
+          "CONSTRUCTION" ->
+            [
+              %{
+                question_text: "What types of construction projects do you undertake?",
+                target_field: "construction_activities",
+                sector_specific: true,
+                regulatory_families: ["CONSTRUCTION", "HEALTH_AND_SAFETY"]
+              },
+              %{
+                question_text: "Do you employ contractors or subcontractors?",
+                target_field: "contractor_relationships", 
+                sector_specific: true,
+                regulatory_families: ["CONSTRUCTION", "EMPLOYMENT"]
+              }
+            ]
+          "MANUFACTURING" ->
+            [
+              %{
+                question_text: "What products do you manufacture?",
+                target_field: "manufactured_products",
+                sector_specific: true,
+                regulatory_families: ["MANUFACTURING", "PRODUCT_SAFETY"]
+              }
+            ]
+          _ ->
+            [
+              %{
+                question_text: "What services do you provide?",
+                target_field: "services_provided",
+                sector_specific: false,
+                regulatory_families: ["GENERAL"]
+              }
+            ]
+        end
+        
+        %{
+          sector_questions: questions,
+          sector: sector,
+          size_considerations: %{
+            size: size,
+            threshold_questions: size == "large"
+          }
+        }
+      end
+    end
   end
 
   postgres do
@@ -65,5 +211,8 @@ defmodule Sertantai.AI.QuestionGeneration do
     define :read
     define :update
     define :destroy
+    define :generate_contextual_questions, args: [:gap_analysis, :organization_context, :conversation_history]
+    define :prioritize_question_set, args: [:questions, :user_context]
+    define :generate_sector_questions, args: [:sector, :organization_size]
   end
 end

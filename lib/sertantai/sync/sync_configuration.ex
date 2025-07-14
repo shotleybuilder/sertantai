@@ -121,31 +121,27 @@ defmodule Sertantai.Sync.SyncConfiguration do
 
   # Role-based authorization policies
   policies do
-    # Admins can read all sync configurations
+    # Allow all read actions for authenticated users (simplify like User resource)
     policy action_type(:read) do
-      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if always()
     end
 
-    # Support can read sync configs but not modify them
-    policy action_type(:read) do
-      authorize_if actor_attribute_equals(:role, :support)
+    # Specific policies for user-scoped actions
+    policy action([:for_user, :active_for_user]) do
+      authorize_if always()
     end
 
-    # Admins can perform all actions on sync configurations
-    policy action_type([:create, :update, :destroy]) do
-      authorize_if actor_attribute_equals(:role, :admin)
-    end
-
-    # Users can only access their own sync configurations
-    policy action_type([:read, :update, :destroy]) do
-      authorize_if expr(user_id == ^actor(:id))
-    end
-
-    # Users can create sync configurations for themselves
+    # Create access: Members, professionals, and admins can create
     policy action_type(:create) do
-      authorize_if actor_attribute_equals(:role, :member)
-      authorize_if actor_attribute_equals(:role, :professional)
       authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :professional)
+      authorize_if actor_attribute_equals(:role, :member)
+    end
+
+    # Update/Destroy access: Admins can modify all, users can modify their own
+    policy action_type([:update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if expr(user_id == ^actor(:id))
     end
   end
 

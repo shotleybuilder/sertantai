@@ -166,11 +166,13 @@ defmodule SertantaiWeb.Router do
   
   # JSON API endpoints will be defined by the resource directly
 
-  # Ash Admin routes - secured with authentication  
-  scope "/admin" do
-    pipe_through [:browser, :require_admin_authentication]
-    ash_admin("/")
-  end
+  # Ash Admin routes - DISABLED due to fundamental memory exhaustion issue
+  # AshAdmin triggers OOM killer even with minimal data (5 users)
+  # See: /docs/dev/admin_page_error.md for full investigation
+  # scope "/admin" do
+  #   pipe_through [:browser, :require_admin_authentication]
+  #   ash_admin("/", domains: [Sertantai.Accounts])
+  # end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:sertantai, :dev_routes) do

@@ -181,9 +181,19 @@ defmodule SertantaiWeb.Router do
     live "/users/:id/edit", Users.UserListLive, :edit
     live "/users/:id", Users.UserDetailLive, :show
     
-    live "/organizations", OrganizationListLive, :index  
-    live "/organizations/:id", OrganizationDetailLive, :show
-    live "/sync", SyncListLive, :index
+    # Organization Management Routes
+    live "/organizations", Organizations.OrganizationListLive, :index
+    live "/organizations/new", Organizations.OrganizationListLive, :new
+    live "/organizations/:id/edit", Organizations.OrganizationListLive, :edit
+    live "/organizations/:id", Organizations.OrganizationDetailLive, :show
+    live "/organizations/:id/locations/new", Organizations.OrganizationDetailLive, :new_location
+    live "/organizations/:id/locations/:location_id/edit", Organizations.OrganizationDetailLive, :edit_location
+    
+    # Sync Configuration Management Routes
+    live "/sync", Sync.SyncListLive, :index
+    live "/sync/new", Sync.SyncListLive, :new
+    live "/sync/:id/edit", Sync.SyncListLive, :edit
+    live "/sync/:id", Sync.SyncDetailLive, :show
     live "/billing", BillingDashboardLive, :index
     live "/system", SystemMonitoringLive, :index
   end

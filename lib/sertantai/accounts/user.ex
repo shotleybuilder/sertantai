@@ -60,7 +60,11 @@ defmodule Sertantai.Accounts.User do
   end
 
   actions do
-    defaults [:read, :update]
+    defaults [:read]
+    
+    update :update do
+      accept [:email, :first_name, :last_name, :timezone]
+    end
 
     create :register_with_password do
       accept [:email, :first_name, :last_name, :timezone, :role]
@@ -131,14 +135,20 @@ defmodule Sertantai.Accounts.User do
       authorize_if always()
     end
     
-    # Admins can do everything (update, destroy)
-    policy action_type([:update, :destroy]) do
-      authorize_if actor_attribute_equals(:role, :admin)
+    # Allow registration for anyone (public user creation)
+    policy action(:register_with_password) do
+      authorize_if always()
     end
     
-    # Users can update their own records (but not role field)
+    # Update policy: Either admin or user updating themselves
     policy action_type(:update) do
+      authorize_if actor_attribute_equals(:role, :admin)
       authorize_if expr(id == ^actor(:id))
+    end
+    
+    # Destroy policy: Only admins
+    policy action_type(:destroy) do
+      authorize_if actor_attribute_equals(:role, :admin)
     end
 
     # Only admins can update roles

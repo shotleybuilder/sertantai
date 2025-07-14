@@ -8,8 +8,6 @@ defmodule SertantaiWeb.Applicability.ProgressiveScreeningLive do
   use SertantaiWeb, :live_view
 
   alias Sertantai.Organizations.ApplicabilityMatcher
-  alias Sertantai.Organizations.ProfileAnalyzer
-  alias Sertantai.Query.{ProgressiveQueryBuilder, ResultStreamer}
   alias Phoenix.PubSub
 
   @impl true
@@ -113,7 +111,7 @@ defmodule SertantaiWeb.Applicability.ProgressiveScreeningLive do
     
     # Start progressive screening stream
     case ApplicabilityMatcher.start_progressive_stream(organization, self()) do
-      %{stream_id: stream_id} = stream_info ->
+      %{stream_id: stream_id} = _stream_info ->
         socket =
           socket
           |> assign(:stream_status, :active)

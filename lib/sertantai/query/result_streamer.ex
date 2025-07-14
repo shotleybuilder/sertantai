@@ -15,7 +15,7 @@ defmodule Sertantai.Query.ResultStreamer do
   Initiates progressive result streaming for an organization.
   Returns a stream reference and starts background processing.
   """
-  def start_progressive_stream(organization, subscriber_pid, opts \\ []) do
+  def start_progressive_stream(organization, _subscriber_pid, opts \\ []) do
     stream_id = generate_stream_id(organization)
     topic = build_stream_topic(stream_id)
     
@@ -105,7 +105,7 @@ defmodule Sertantai.Query.ResultStreamer do
 
   # Private implementation functions
 
-  defp execute_progressive_stream(organization, stream_id, opts) do
+  defp execute_progressive_stream(organization, stream_id, _opts) do
     topic = build_stream_topic(stream_id)
     
     # Broadcast stream initiation
@@ -257,7 +257,7 @@ defmodule Sertantai.Query.ResultStreamer do
   end
   defp filter_regulations_by_ids(_, _), do: []
 
-  defp analyze_profile_change_impact(organization, changed_fields) do
+  defp analyze_profile_change_impact(_organization, changed_fields) do
     # Analyze which fields changed and their impact on screening results
     critical_fields = ["industry_sector", "headquarters_region", "total_employees"]
     enhanced_fields = ["operational_regions", "business_activities", "annual_turnover"]

@@ -70,21 +70,14 @@ defmodule SertantaiWeb.SyncController do
           
           case RecordSelectionLive.get_user_selected_records(user_id) do
             {:ok, records} ->
-              case export_records(records, format_atom) do
-                {:ok, data} ->
-                  content_type = if format == "csv", do: "text/csv", else: "application/json"
-                  filename = "sertantai_records_#{Date.utc_today()}.#{format}"
-                  
-                  conn
-                  |> put_resp_content_type(content_type)
-                  |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}\"")
-                  |> send_resp(200, data)
-                
-                {:error, error} ->
-                  conn
-                  |> put_status(:internal_server_error)  
-                  |> json(%{error: "Export failed: #{inspect(error)}"})
-              end
+              {:ok, data} = export_records(records, format_atom)
+              content_type = if format == "csv", do: "text/csv", else: "application/json"
+              filename = "sertantai_records_#{Date.utc_today()}.#{format}"
+              
+              conn
+              |> put_resp_content_type(content_type)
+              |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}\"")
+              |> send_resp(200, data)
             
             {:error, error} ->
               conn

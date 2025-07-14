@@ -30,7 +30,7 @@ defmodule Sertantai.Query.ProgressiveQueryBuilder do
   Executes progressive screening with adaptive complexity.
   Returns results with performance metadata for optimization.
   """
-  def execute_progressive_screening(organization, opts \\ []) do
+  def execute_progressive_screening(organization, _opts \\ []) do
     strategy = build_query_strategy(organization)
     start_time = System.monotonic_time(:millisecond)
     
@@ -424,12 +424,12 @@ defmodule Sertantai.Query.ProgressiveQueryBuilder do
     regulations
   end
 
-  defp identify_priority_compliance_areas(regulations) do
+  defp identify_priority_compliance_areas(_regulations) do
     # TODO: Analyze regulations to identify key compliance areas
     ["health_safety", "environmental", "data_protection"]
   end
 
-  defp generate_compliance_recommendations(regulations, profile) do
+  defp generate_compliance_recommendations(_regulations, _profile) do
     # TODO: Generate actionable compliance recommendations
     [
       "Review health and safety regulations applicable to your sector",

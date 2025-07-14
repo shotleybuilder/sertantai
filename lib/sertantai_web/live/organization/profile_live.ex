@@ -76,7 +76,7 @@ defmodule SertantaiWeb.Organization.ProfileLive do
          |> assign(:editing, false)
          |> put_flash(:info, "Organization profile updated successfully!")}
 
-      {:error, error} ->
+      {:error, _error} ->
         # Create a new form for the original organization to reset the form state
         form = AshPhoenix.Form.for_action(organization, :update, domain: Sertantai.Organizations)
         

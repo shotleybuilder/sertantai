@@ -4,7 +4,7 @@ defmodule Sertantai.Organizations.SingleLocationAdapter do
   Simplifies UI and API when organization has only one location.
   """
   
-  alias Sertantai.Organizations.{Organization, OrganizationLocation}
+  alias Sertantai.Organizations.OrganizationLocation
   require Ash.Query
 
   @doc """
@@ -221,13 +221,16 @@ defmodule Sertantai.Organizations.SingleLocationAdapter do
       end
     
     # Update operational profile
-    if Enum.any?(updates, fn {k, _} -> k in ~w(industry_sector annual_turnover) end) do
-      new_op_profile = 
-        location.operational_profile
-        |> Map.merge(Map.take(updates, ~w(industry_sector annual_turnover)))
-      
-      location_attrs = Map.put(location_attrs, :operational_profile, new_op_profile)
-    end
+    location_attrs = 
+      if Enum.any?(updates, fn {k, _} -> k in ~w(industry_sector annual_turnover) end) do
+        new_op_profile = 
+          location.operational_profile
+          |> Map.merge(Map.take(updates, ~w(industry_sector annual_turnover)))
+        
+        Map.put(location_attrs, :operational_profile, new_op_profile)
+      else
+        location_attrs
+      end
     
     if map_size(location_attrs) > 0 do
       Ash.update(location, location_attrs,

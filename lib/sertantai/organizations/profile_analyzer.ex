@@ -372,7 +372,7 @@ defmodule Sertantai.Organizations.ProfileAnalyzer do
     end
   end
 
-  defp check_region_activity_consistency(profile) do
+  defp check_region_activity_consistency(_profile) do
     # For now, assume consistency - more sophisticated checks can be added
     true
   end
@@ -443,26 +443,20 @@ defmodule Sertantai.Organizations.ProfileAnalyzer do
   end
 
   defp identify_quality_issues(quality_checks) do
-    issues = []
-    
-    if quality_checks.field_completeness.status == :needs_improvement do
-      issues = ["Incomplete profile data" | issues]
-    end
-    
-    if quality_checks.data_consistency.status == :inconsistent do
-      issues = ["Data consistency issues detected" | issues]
-    end
-    
-    if quality_checks.value_validity.validity_ratio < 0.8 do
-      issues = ["Invalid data values found" | issues]
-    end
-    
-    if quality_checks.logical_coherence.coherence_status == :needs_review do
-      issues = issues ++ quality_checks.logical_coherence.coherence_issues
-    end
-    
-    issues
+    []
+    |> maybe_add_issue(quality_checks.field_completeness.status == :needs_improvement, "Incomplete profile data")
+    |> maybe_add_issue(quality_checks.data_consistency.status == :inconsistent, "Data consistency issues detected")
+    |> maybe_add_issue(quality_checks.value_validity.validity_ratio < 0.8, "Invalid data values found")
+    |> maybe_add_coherence_issues(quality_checks.logical_coherence)
   end
+  
+  defp maybe_add_issue(issues, true, issue), do: [issue | issues]
+  defp maybe_add_issue(issues, false, _issue), do: issues
+  
+  defp maybe_add_coherence_issues(issues, %{coherence_status: :needs_review, coherence_issues: coherence_issues}) do
+    issues ++ coherence_issues
+  end
+  defp maybe_add_coherence_issues(issues, _), do: issues
 
   defp generate_improvement_suggestions(issues) do
     Enum.map(issues, &suggest_improvement_for_issue/1)
@@ -492,105 +486,90 @@ defmodule Sertantai.Organizations.ProfileAnalyzer do
     Enum.sum(confidence_factors)
   end
 
-  defp identify_priority_improvements(analysis) do
+  defp identify_priority_improvements(_analysis) do
     # Identify the most impactful improvements based on analysis
     []  # TODO: Implement priority improvement identification
   end
 
-  defp identify_quick_wins(profile) do
+  defp identify_quick_wins(_profile) do
     # Identify easy-to-complete fields that would improve screening
     []  # TODO: Implement quick wins identification
   end
 
-  defp identify_compliance_focus_areas(profile) do
+  defp identify_compliance_focus_areas(_profile) do
     # Identify key compliance areas based on sector and activities
     []  # TODO: Implement compliance focus area identification
   end
 
-  defp suggest_data_collection_strategy(analysis) do
+  defp suggest_data_collection_strategy(_analysis) do
     # Suggest strategy for collecting missing data
     %{}  # TODO: Implement data collection strategy
   end
 
-  defp suggest_screening_optimization(analysis) do
+  defp suggest_screening_optimization(_analysis) do
     # Suggest ways to optimize screening based on current profile
     %{}  # TODO: Implement screening optimization suggestions
   end
 
-  defp identify_sector_compliance_areas(profile) do
+  defp identify_sector_compliance_areas(_profile) do
     # Identify compliance areas specific to the organization's sector
     []  # TODO: Implement sector-specific compliance identification
   end
 
-  defp identify_geographic_requirements(profile) do
+  defp identify_geographic_requirements(_profile) do
     # Identify requirements based on geographic presence
     []  # TODO: Implement geographic requirements identification
   end
 
-  defp identify_size_based_obligations(profile) do
+  defp identify_size_based_obligations(_profile) do
     # Identify obligations based on organization size
     []  # TODO: Implement size-based obligations identification
   end
 
-  defp identify_activity_specific_rules(profile) do
+  defp identify_activity_specific_rules(_profile) do
     # Identify rules specific to business activities
     []  # TODO: Implement activity-specific rules identification
   end
 
-  defp identify_risk_based_priorities(profile) do
+  defp identify_risk_based_priorities(_profile) do
     # Identify priorities based on risk profile
     []  # TODO: Implement risk-based priority identification
   end
 
   defp identify_risk_indicators(profile) do
     # Identify potential risk indicators in the profile
-    indicators = []
-    
-    # High employee count without proper compliance framework
-    if Map.get(profile, "total_employees", 0) > 250 && 
-       (!Map.has_key?(profile, "compliance_requirements") || Map.get(profile, "compliance_requirements") == []) do
-      indicators = ["Large workforce without documented compliance requirements" | indicators]
-    end
-    
-    # High turnover without clear industry classification
-    if Map.get(profile, "annual_turnover", 0) > 10_000_000 && 
-       (!Map.has_key?(profile, "industry_sector") || Map.get(profile, "industry_sector") == "") do
-      indicators = ["High turnover without clear industry classification" | indicators]
-    end
-    
-    # Multi-regional operations without documented operational regions
-    if Map.get(profile, "headquarters_region") != nil &&
-       (!Map.has_key?(profile, "operational_regions") || length(Map.get(profile, "operational_regions", [])) < 2) do
-      indicators = ["Potential multi-regional operations not documented" | indicators]
-    end
-    
-    indicators
+    []
+    |> maybe_add_risk_indicator(
+      Map.get(profile, "total_employees", 0) > 250 && 
+      (!Map.has_key?(profile, "compliance_requirements") || Map.get(profile, "compliance_requirements") == []),
+      "Large workforce without documented compliance requirements"
+    )
+    |> maybe_add_risk_indicator(
+      Map.get(profile, "annual_turnover", 0) > 10_000_000 && 
+      (!Map.has_key?(profile, "industry_sector") || Map.get(profile, "industry_sector") == ""),
+      "High turnover without clear industry classification"
+    )
+    |> maybe_add_risk_indicator(
+      Map.get(profile, "headquarters_region") != nil &&
+      (!Map.has_key?(profile, "operational_regions") || length(Map.get(profile, "operational_regions", [])) < 2),
+      "Potential multi-regional operations not documented"
+    )
   end
+  
+  defp maybe_add_risk_indicator(indicators, true, indicator), do: [indicator | indicators]
+  defp maybe_add_risk_indicator(indicators, false, _indicator), do: indicators
 
   defp generate_recommendations(profile) do
-    recommendations = []
-    
-    # Basic field completion recommendations
     missing_basic = identify_missing_fields(profile, get_basic_fields())
-    if length(missing_basic) > 0 do
-      recommendations = ["Complete missing basic fields: #{Enum.join(missing_basic, ", ")}" | recommendations]
-    end
-    
-    # Enhanced field completion recommendations
     missing_enhanced = identify_missing_fields(profile, get_enhanced_fields())
-    if length(missing_enhanced) > 0 && length(missing_basic) == 0 do
-      recommendations = ["Add enhanced profile details: #{Enum.join(missing_enhanced, ", ")}" | recommendations]
-    end
     
-    # Data quality improvements
-    if !validate_employee_count(Map.get(profile, "total_employees")) do
-      recommendations = ["Verify and correct employee count data" | recommendations]
-    end
-    
-    if !validate_turnover(Map.get(profile, "annual_turnover")) do
-      recommendations = ["Verify and correct annual turnover data" | recommendations]
-    end
-    
-    recommendations
+    []
+    |> maybe_add_recommendation(length(missing_basic) > 0, "Complete missing basic fields: #{Enum.join(missing_basic, ", ")}")
+    |> maybe_add_recommendation(length(missing_enhanced) > 0 && length(missing_basic) == 0, "Add enhanced profile details: #{Enum.join(missing_enhanced, ", ")}")
+    |> maybe_add_recommendation(!validate_employee_count(Map.get(profile, "total_employees")), "Verify and correct employee count data")
+    |> maybe_add_recommendation(!validate_turnover(Map.get(profile, "annual_turnover")), "Verify and correct annual turnover data")
   end
+  
+  defp maybe_add_recommendation(recommendations, true, recommendation), do: [recommendation | recommendations]
+  defp maybe_add_recommendation(recommendations, false, _recommendation), do: recommendations
 end

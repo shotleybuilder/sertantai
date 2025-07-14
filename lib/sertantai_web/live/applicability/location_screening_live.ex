@@ -6,9 +6,8 @@ defmodule SertantaiWeb.Applicability.LocationScreeningLive do
   use SertantaiWeb, :live_view
   
   alias Sertantai.Organizations
-  alias Sertantai.Organizations.{Organization, OrganizationLocation, SingleLocationAdapter}
-  alias Sertantai.Query.ProgressiveQueryBuilder
-  require Ash.Query
+  alias Sertantai.Organizations.{OrganizationLocation, SingleLocationAdapter}
+    require Ash.Query
 
   @impl true
   def render(assigns) do
@@ -283,8 +282,8 @@ defmodule SertantaiWeb.Applicability.LocationScreeningLive do
   def handle_event("start_ai_screening", _params, socket) do
     location = socket.assigns.location
     
-    # Redirect to AI conversation with location context
-    {:noreply, redirect(socket, to: ~p"/applicability/ai?location_id=#{location.id}")}
+    # Redirect to progressive screening with location context (AI-enhanced screening)
+    {:noreply, redirect(socket, to: ~p"/applicability/location/#{location.id}/progressive")}
   end
 
   @impl true

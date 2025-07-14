@@ -6,7 +6,6 @@ defmodule SertantaiWeb.Applicability.OrganizationAggregateScreeningLive do
   use SertantaiWeb, :live_view
   
   alias Sertantai.Organizations
-  alias Sertantai.Organizations.{Organization, SingleLocationAdapter}
   require Ash.Query
 
   @impl true
@@ -514,7 +513,7 @@ defmodule SertantaiWeb.Applicability.OrganizationAggregateScreeningLive do
     end)
   end
 
-  defp generate_aggregate_recommendations(organization, locations) do
+  defp generate_aggregate_recommendations(_organization, locations) do
     [
       %{
         priority: :high,

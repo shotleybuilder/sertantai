@@ -8,7 +8,7 @@ defmodule SertantaiWeb.Applicability.AIConversationLive do
   
   use SertantaiWeb, :live_view
   
-  alias Sertantai.AI.{ConversationSession, OrganizationAnalysis, QuestionGeneration}
+  alias Sertantai.AI.{ConversationSession, OrganizationAnalysis}
   alias Sertantai.Organizations
 
   @impl true
@@ -57,7 +57,7 @@ defmodule SertantaiWeb.Applicability.AIConversationLive do
 
   @impl true
   def handle_event("send_message", %{"message" => message}, socket) when message != "" do
-    %{conversation_session: session, organization: organization} = socket.assigns
+    %{conversation_session: session, organization: _organization} = socket.assigns
 
     # Add user message to conversation
     user_message = %{
@@ -181,7 +181,7 @@ defmodule SertantaiWeb.Applicability.AIConversationLive do
   # Private helper functions
 
   defp load_organization_and_session(organization_id, current_user) do
-    with {:ok, organization} <- Organizations.Organization.get(organization_id),
+    with {:ok, organization} <- Organizations.Organization.read(organization_id),
          {:ok, session} <- get_or_create_session(organization, current_user) do
       {:ok, organization, session}
     else
@@ -225,7 +225,7 @@ defmodule SertantaiWeb.Applicability.AIConversationLive do
     organization.core_profile["industry_sector"] || "GENERAL"
   end
 
-  defp generate_welcome_message(organization, gap_analysis) do
+  defp generate_welcome_message(organization, _gap_analysis) do
     """
     Hello! I'm here to help you complete your organization profile for #{organization.name}. 
 
@@ -259,7 +259,7 @@ defmodule SertantaiWeb.Applicability.AIConversationLive do
     |> Enum.map(&(&1.content))
   end
 
-  defp generate_next_question(user_response, org_profile, context) do
+  defp generate_next_question(_user_response, _org_profile, _context) do
     # Use QuestionGeneration resource to get next question
     # For now, return a placeholder question
     %{

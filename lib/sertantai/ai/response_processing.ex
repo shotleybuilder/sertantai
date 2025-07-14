@@ -240,7 +240,7 @@ defmodule Sertantai.AI.ResponseProcessing do
     end)
   end
 
-  defp identify_clarifications_needed(response, context) do
+  defp identify_clarifications_needed(response, _context) do
     # Identify if clarification is needed based on response quality
     if String.length(String.trim(response)) < 10 do
       ["Response seems too brief, could you provide more detail?"]
@@ -249,7 +249,7 @@ defmodule Sertantai.AI.ResponseProcessing do
     end
   end
 
-  defp validate_against_schema(extracted_data, _constraints, _existing) do
+  defp validate_against_schema(_extracted_data, _constraints, _existing) do
     # Basic validation logic
     errors = []
     

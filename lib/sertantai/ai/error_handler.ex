@@ -143,7 +143,7 @@ defmodule Sertantai.AI.ErrorHandler do
   def get_retry_delay(_, _), do: 1000
 
   def handle_session_interruption(session_id, error_type, error_details \\ nil) do
-    case ConversationSession.get(session_id) do
+    case ConversationSession.read(session_id) do
       {:ok, session} ->
         reason = format_interruption_reason(error_type, error_details)
         ConversationSession.mark_interrupted(session, reason)
@@ -151,25 +151,25 @@ defmodule Sertantai.AI.ErrorHandler do
         Logger.warning("Session #{session_id} interrupted: #{reason}")
         {:ok, :session_interrupted}
       
-      {:error, :not_found} ->
+      {:error, %Ash.Error.Query.NotFound{}} ->
         Logger.error("Cannot interrupt session #{session_id}: session not found")
         {:error, :session_not_found}
       
-      error ->
+      {:error, error} ->
         Logger.error("Failed to interrupt session #{session_id}: #{inspect(error)}")
         {:error, :interruption_failed}
     end
   end
 
   def attempt_session_recovery(session_id) do
-    case ConversationSession.get(session_id) do
+    case ConversationSession.read(session_id) do
       {:ok, session} when session.session_status == :interrupted ->
         case ConversationSession.recover_session(session) do
           {:ok, recovered_session} ->
             Logger.info("Session #{session_id} successfully recovered")
             {:ok, recovered_session}
           
-          error ->
+          {:error, error} ->
             Logger.error("Failed to recover session #{session_id}: #{inspect(error)}")
             {:error, :recovery_failed}
         end
@@ -178,7 +178,7 @@ defmodule Sertantai.AI.ErrorHandler do
         Logger.info("Session #{session_id} does not need recovery (status: #{session.session_status})")
         {:ok, session}
       
-      error ->
+      {:error, error} ->
         Logger.error("Cannot recover session #{session_id}: #{inspect(error)}")
         {:error, :session_not_found}
     end

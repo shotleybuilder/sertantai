@@ -16,6 +16,59 @@ This is a Phoenix/Elixir web application named "Sertantai" that uses the Ash fra
 - **Tailwind CSS** - Styling framework
 - **ESBuild** - JavaScript bundling
 
+## ⚠️ CRITICAL ASH FRAMEWORK RULES
+
+**🚫 NEVER USE STANDARD ECTO/PHOENIX PATTERNS - ALWAYS USE ASH PATTERNS**
+
+### Database Operations
+- **NEVER**: `Ecto.Changeset.cast/3`, `Repo.insert/1`, `Repo.update/1`, `Repo.get/2`
+- **ALWAYS**: `Ash.create/2`, `Ash.update/2`, `Ash.read/2`, `Ash.get/2`, `Ash.destroy/2`
+
+### Forms and Changesets
+- **NEVER**: `Ecto.Changeset.change/2`, `Phoenix.HTML.Form` with Ecto changesets
+- **ALWAYS**: `AshPhoenix.Form.for_create/3`, `AshPhoenix.Form.for_update/3`, `AshPhoenix.Form.validate/2`, `AshPhoenix.Form.submit/2`
+
+### Data Queries
+- **NEVER**: `from(u in User, where: u.role == :admin) |> Repo.all()`
+- **ALWAYS**: `Ash.read(User, actor: current_user)` with Ash queries and filters
+
+### Resource Actions
+- **NEVER**: Define custom functions that bypass Ash actions
+- **ALWAYS**: Use defined Ash actions like `:register_with_password`, `:update_role`, etc.
+
+### Authentication Integration
+- **NEVER**: Custom authentication logic bypassing Ash policies
+- **ALWAYS**: Use `actor: current_user` parameter in all Ash calls for policy enforcement
+
+### Error Handling
+- **NEVER**: `{:error, %Ecto.Changeset{}}` pattern matching
+- **ALWAYS**: `{:error, %Ash.Error{}}` and `AshPhoenix.Form` error handling
+
+### Pre-Development Checklist
+**Before writing ANY code that interacts with data:**
+1. ✅ Check existing Ash resource definitions in `lib/sertantai/`
+2. ✅ Identify available Ash actions (`:create`, `:read`, `:update`, `:destroy`, custom actions)
+3. ✅ Use `AshPhoenix.Form` for all form handling
+4. ✅ Use `Ash.*` functions for all database operations
+5. ✅ Include `actor: current_user` in all calls for authorization
+6. ✅ Test with Ash policies and authorization in mind
+
+### Common Ash Patterns
+```elixir
+# Forms
+form = AshPhoenix.Form.for_create(User, :register_with_password, forms: [auto?: false])
+form = AshPhoenix.Form.for_update(user, :update, forms: [auto?: false])
+form = AshPhoenix.Form.validate(form, params)
+{:ok, user} = AshPhoenix.Form.submit(form, params: params)
+
+# Database Operations
+{:ok, users} = Ash.read(User, actor: current_user)
+{:ok, user} = Ash.get(User, id, actor: current_user)
+{:ok, user} = Ash.create(User, params, action: :register_with_password, actor: current_user)
+{:ok, user} = Ash.update(user, params, action: :update, actor: current_user)
+:ok = Ash.destroy(user, actor: current_user)
+```
+
 ## Common Commands
 
 ### Development Setup
@@ -67,10 +120,19 @@ mix ecto.setup              # Create, migrate, and seed database
 **Never let the app run ahead of the database schema!**
 
 ### Testing
+**⚠️ TERMINAL CRASH ISSUE**: Direct test execution causes terminal crashes. Use manual Tidewave MCP approach instead.
+
+**MANUAL TESTING APPROACH (Recommended):**
+1. **Use Tidewave MCP** to examine test results and outputs instead of running tests directly
+2. **Access via**: /home/jason/mcp-proxy http://localhost:4000/tidewave/mcp
+3. **Query test files** and examine expected vs actual behavior through MCP interface
+4. **Validate functionality** by examining code paths and test assertions manually
+
+**Traditional Testing Commands (Use with caution - may crash terminal):**
 ```bash
-mix test                    # Run all tests (with database setup)
-mix test --only <tag>       # Run specific tagged tests
-mix test test/path/file.exs # Run specific test file
+mix test                    # Run all tests (with database setup) - TERMINAL CRASH RISK
+mix test --only <tag>       # Run specific tagged tests - TERMINAL CRASH RISK  
+mix test test/path/file.exs # Run specific test file - TERMINAL CRASH RISK
 ```
 
 **⚠️ PORT CONFLICT RULE**: 

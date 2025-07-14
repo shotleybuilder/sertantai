@@ -1,7 +1,7 @@
 defmodule SertantaiWeb.Router do
   use SertantaiWeb, :router
   use AshAuthentication.Phoenix.Router
-  import AshAdmin.Router
+  # import AshAdmin.Router  # Unused import
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -34,11 +34,6 @@ defmodule SertantaiWeb.Router do
     plug :require_admin_authentication
   end
 
-  # Custom authentication plug for LiveView - pass through, auth handled in LiveView mount
-  def skip_authentication_for_liveview(conn, _opts) do
-    conn
-  end
-
   # Authentication plug for API routes (bearer token based)
   def require_authenticated_user(conn, _opts) do
     case AshAuthentication.Plug.Helpers.retrieve_from_bearer(conn, Sertantai.Accounts.User) do
@@ -55,6 +50,11 @@ defmodule SertantaiWeb.Router do
         |> Phoenix.Controller.json(%{error: "Authentication required"})
         |> Plug.Conn.halt()
     end
+  end
+
+  # Custom authentication plug for LiveView - pass through, auth handled in LiveView mount
+  def skip_authentication_for_liveview(conn, _opts) do
+    conn
   end
 
   # Authentication plug for admin routes (session based with role check)
@@ -166,13 +166,27 @@ defmodule SertantaiWeb.Router do
   
   # JSON API endpoints will be defined by the resource directly
 
-  # Ash Admin routes - DISABLED due to fundamental memory exhaustion issue
-  # AshAdmin triggers OOM killer even with minimal data (5 users)
-  # See: /docs/dev/admin_page_error.md for full investigation
-  # scope "/admin" do
-  #   pipe_through [:browser, :require_admin_authentication]
-  #   ash_admin("/", domains: [Sertantai.Accounts])
-  # end
+  # Custom Admin Interface - replaces problematic AshAdmin
+  # AshAdmin was disabled due to memory exhaustion issues (OOM killer)
+  # See: /docs/dev/admin_page_error.md for investigation
+  # See: /docs/dev/custom_admin_plan.md for implementation plan
+  scope "/admin", SertantaiWeb.Admin do
+    pipe_through [:browser, :require_admin_authentication]
+    
+    live "/", AdminLive, :dashboard
+    
+    # User Management Routes
+    live "/users", Users.UserListLive, :index
+    live "/users/new", Users.UserListLive, :new
+    live "/users/:id/edit", Users.UserListLive, :edit
+    live "/users/:id", Users.UserDetailLive, :show
+    
+    live "/organizations", OrganizationListLive, :index  
+    live "/organizations/:id", OrganizationDetailLive, :show
+    live "/sync", SyncListLive, :index
+    live "/billing", BillingDashboardLive, :index
+    live "/system", SystemMonitoringLive, :index
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:sertantai, :dev_routes) do

@@ -9,6 +9,7 @@ defmodule Sertantai.Accounts do
   resources do
     resource Sertantai.Accounts.User
     resource Sertantai.Accounts.Token
+    resource Sertantai.Accounts.UserIdentity
   end
 
   # Authentication is handled by the domain extension

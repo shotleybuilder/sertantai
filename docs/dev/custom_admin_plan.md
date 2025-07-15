@@ -303,57 +303,291 @@ The custom admin interface will use the existing 5-tier role system:
 
 ---
 
-## Phase 4: Billing Integration & Management
-**Timeline: 4-5 days**
+## Phase 4a: OAuth Authentication Integration
+**Timeline: 3-4 days** (updated for OKTA integration)
+**Status: 📋 TO DO**
+
+### Objectives
+- Add OAuth authentication providers to improve user experience
+- Enhance registration and login flows for better billing conversion
+- Integrate Google and GitHub OAuth with existing role system
+- Add enterprise-grade authentication (Azure, LinkedIn, OKTA SSO)
+- Integrate data platform OAuth for seamless sync setup
+- Prepare optimized user journey for subscription upgrades
+
+### Key Steps
+1. **OAuth Provider Setup - Core Providers**
+   - Configure Google OAuth with AshAuthentication (consumer/general audience)
+   - Configure GitHub OAuth for developer audience
+   - Configure Microsoft Azure OAuth for enterprise customers
+   - Configure LinkedIn OAuth for professional networking
+   - Set up OAuth secrets management system
+   - Create OAuth callback routes and handling
+
+2. **Enterprise SSO Integration**
+   - Configure OKTA OIDC integration for enterprise customers
+   - Multi-tenant OKTA support (different customer organizations)
+   - Advanced user attribute mapping from OKTA
+   - Group/role synchronization from enterprise directories
+   - OKTA admin interface integration
+
+3. **OAuth Provider Setup - Data Platform Integration**
+   - Configure Airtable OAuth for seamless data sync authentication
+   - Notion OAuth integration (if available) for workspace connectivity
+   - Zapier OAuth for automation platform integration
+   - Prepare framework for additional no-code platform OAuth providers
+
+4. **User Registration Enhancement**
+   - Update User resource with multi-provider OAuth support including OKTA
+   - Add identity resource for tracking multiple OAuth providers per user
+   - Implement email verification via OAuth providers
+   - Enhanced user profile data collection (real names, verified emails, company info)
+   - Support for multiple linked accounts (e.g., user links LinkedIn + Airtable + OKTA)
+   - Enterprise user provisioning via OKTA group membership
+
+5. **Admin Interface Integration**
+   - Add OAuth provider information to user management
+   - Display user registration source (password/Google/GitHub/Azure/LinkedIn/Airtable/OKTA)
+   - Admin ability to see OAuth-linked accounts and data platform connections
+   - OAuth user analytics by provider and enterprise vs individual
+   - Sync permission analytics (which users have connected which platforms)
+   - OKTA organization and group membership analytics
+   - Enterprise customer identification via OKTA domains
+
+6. **Authentication Flow Optimization**
+   - Seamless registration: `guest -> OAuth signup -> member`
+   - Multi-provider registration flow with progressive connection
+   - Enterprise-friendly Azure/LinkedIn/OKTA authentication
+   - OKTA SSO domain detection and automatic routing
+   - Data platform OAuth that doubles as sync authentication
+   - Mobile-friendly OAuth flows with platform-specific UX
+   - Error handling and fallback to password auth
+
+### Business Benefits for Billing
+- **Higher Conversion Rates**: OAuth typically increases signup rates by 30-50%
+- **Better Data Quality**: Verified emails and real names for billing
+- **Reduced Friction**: Easier path from free to paid subscription
+- **Professional Users**: GitHub OAuth attracts developers willing to pay
+- **Enterprise Ready**: Azure/LinkedIn/OKTA OAuth supports business authentication flows
+- **Enterprise Targeting**: OKTA SSO integration appeals to Fortune 500 organizations
+- **High-Value Customers**: OKTA users typically represent enterprise contracts (10x revenue)
+- **IT Department Approval**: OKTA integration removes enterprise security barriers
+- **Professional Network**: LinkedIn OAuth provides business context and credibility
+- **Data Platform Synergy**: Airtable/Notion OAuth creates immediate sync value proposition
+- **Reduced Sync Setup Friction**: Users authenticate once for both login + data sync
+- **Competitive Advantage**: OKTA SSO differentiates from competitors
+
+### Technical Implementation
+```elixir
+# Enhanced User resource with Multi-Provider OAuth
+authentication do
+  strategies do
+    # Existing password authentication
+    password :password do
+      identity_field :email
+      hashed_password_field :hashed_password
+      confirmation_required? false
+    end
+    
+    # Core OAuth strategies for authentication
+    google do
+      client_id {MyApp.Secrets, :google_client_id, []}
+      client_secret {MyApp.Secrets, :google_client_secret, []}
+      redirect_uri {MyApp.Secrets, :google_redirect_uri, []}
+    end
+    
+    github do
+      client_id {MyApp.Secrets, :github_client_id, []}
+      client_secret {MyApp.Secrets, :github_client_secret, []}
+      redirect_uri {MyApp.Secrets, :github_redirect_uri, []}
+    end
+    
+    # Enterprise OAuth strategies
+    microsoft do
+      client_id {MyApp.Secrets, :azure_client_id, []}
+      client_secret {MyApp.Secrets, :azure_client_secret, []}
+      redirect_uri {MyApp.Secrets, :azure_redirect_uri, []}
+      authorize_url "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+      token_url "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+    end
+    
+    linkedin do
+      client_id {MyApp.Secrets, :linkedin_client_id, []}
+      client_secret {MyApp.Secrets, :linkedin_client_secret, []}
+      redirect_uri {MyApp.Secrets, :linkedin_redirect_uri, []}
+    end
+    
+    # Enterprise SSO strategies
+    oidc :okta do
+      client_id {MyApp.Secrets, :okta_client_id, []}
+      client_secret {MyApp.Secrets, :okta_client_secret, []}
+      base_url {MyApp.Secrets, :okta_base_url, []} # https://customer.okta.com
+      authorization_params [scope: "openid profile email groups"]
+    end
+    
+    # Data Platform OAuth strategies (dual-purpose: auth + sync)
+    airtable do
+      client_id {MyApp.Secrets, :airtable_client_id, []}
+      client_secret {MyApp.Secrets, :airtable_client_secret, []}
+      redirect_uri {MyApp.Secrets, :airtable_redirect_uri, []}
+      authorize_url "https://airtable.com/oauth2/v1/authorize"
+      token_url "https://airtable.com/oauth2/v1/token"
+    end
+  end
+end
+```
+
+### Enhanced User Attributes
+- **Multi-Provider OAuth Tracking**: Which providers user has connected (can be multiple)
+- **Primary Registration Source**: First provider used for initial registration  
+- **Verified Email Status**: OAuth providers handle email verification
+- **Real Name Collection**: Better billing contact information
+- **Professional Profile**: GitHub integration for developer audience
+- **Enterprise Context**: Azure/LinkedIn/OKTA provide company and role information
+- **OKTA Group Membership**: Enterprise roles and permissions from directory
+- **Enterprise Domain**: Company domain extracted from OKTA/Azure login
+- **Data Platform Connections**: Track which sync platforms user has OAuth access to
+- **Sync Permission Status**: Whether OAuth tokens are valid for data operations
+
+### Testing Strategy
+- **Multi-Provider OAuth Flow Tests**: Test all OAuth providers (Google, GitHub, Azure, LinkedIn, Airtable, OKTA)
+- **Registration Tests**: Verify OAuth user creation and role assignment across providers
+- **Enterprise Provider Tests**: Test Azure/LinkedIn/OKTA company data collection
+- **OKTA SSO Tests**: Test OIDC flow, multi-tenant support, group membership mapping
+- **Data Platform Integration Tests**: Test Airtable OAuth for both auth + sync permissions
+- **Multi-Account Linking Tests**: Verify users can link multiple OAuth providers including OKTA
+- **Provider Precedence Tests**: Test which provider data takes priority when conflicts arise
+- **Enterprise Provisioning Tests**: Test OKTA group-based user provisioning
+- **Fallback Tests**: Ensure password authentication still works when OAuth unavailable
+- **Security Tests**: Verify OAuth token handling, storage, and refresh for all providers
+
+### Success Criteria
+- [ ] Google OAuth registration and login working
+- [ ] GitHub OAuth registration and login working  
+- [ ] Microsoft Azure OAuth registration and login working
+- [ ] LinkedIn OAuth registration and login working
+- [ ] Airtable OAuth registration and login working
+- [ ] OKTA OIDC registration and login working (multi-tenant support)
+- [ ] OAuth users automatically assigned `:member` role
+- [ ] Users can link multiple OAuth providers to single account
+- [ ] Admin interface shows all OAuth provider information and enterprise context
+- [ ] OKTA group membership and enterprise domain tracking working
+- [ ] Data platform OAuth tokens usable for sync operations
+- [ ] Existing password authentication unaffected
+- [ ] Real name, verified email, and company information collection working
+- [ ] Enterprise data (company, role, groups) collected from Azure/LinkedIn/OKTA
+- [ ] Enterprise customer identification via OKTA domains working
+- [ ] Mobile-friendly OAuth flows functional for all providers
+- [ ] Error handling comprehensive for OAuth failures across all providers
+
+### 📈 **Expected Impact on Billing Conversion**
+- **30-50% increase** in user registration completion
+- **Higher quality user data** for billing (verified emails, real names, company info)
+- **Professional developer audience** via GitHub OAuth (higher willingness to pay)
+- **Enterprise customer acquisition** via Azure/LinkedIn/OKTA OAuth (high-value customers)
+- **10x revenue potential** from OKTA enterprise customers (Fortune 500)
+- **IT department approval** via OKTA SSO removes enterprise sales barriers
+- **Reduced authentication friction** for subscription upgrades
+- **Immediate sync value proposition** via Airtable/data platform OAuth
+- **Multi-provider flexibility** allows users to choose preferred enterprise authentication
+- **Professional context** from LinkedIn increases subscription conversion rates
+- **Competitive differentiation** via enterprise SSO capability
+
+---
+
+## Phase 4b: Stripe Billing Integration & Management
+**Timeline: 3-4 days**
 **Status: 📋 TO DO**
 
 ### Objectives
 - Create billing administration interface
 - Integrate with Stripe for subscription management
 - Build subscription analytics and reporting
-- Implement billing-related user management
+- Implement automatic role-billing integration
 
 ### Key Steps
-1. **Billing Dashboard**
-   - Subscription overview and metrics
-   - Revenue analytics and reporting
-   - Payment status monitoring
-   - Billing error tracking and resolution
+1. **Stripe Integration Setup**
+   - Add Stripe dependencies (`stripity_stripe`)
+   - Configure Stripe API keys and webhook endpoints
+   - Create billing domain with Ash resources
+   - Set up development and production environments
 
-2. **Subscription Management**
-   - Customer subscription list and details
+2. **Billing Resources & Domain**
+   - Create `Billing.Customer` resource linked to User
+   - Create `Billing.Subscription` resource with plans
+   - Create `Billing.Payment` resource for transaction history
+   - Create `Billing.Plan` resource for subscription tiers
+   - Link subscription status to automatic role management
+
+3. **Subscription Management Interface**
+   - Customer subscription list and details in admin
    - Subscription creation, modification, cancellation
    - Plan management and pricing updates
    - Payment method administration
+   - Billing dashboard with key metrics
 
-3. **Role-Billing Integration**
-   - Automatic role upgrades/downgrades based on billing
-   - Manual role override for special cases
-   - Billing status impact on user access
-   - Subscription-role audit trail
+4. **Automatic Role-Billing Integration**
+   - Automatic role upgrades: `member -> professional` on successful payment
+   - Automatic role downgrades: `professional -> member` on subscription cancellation
+   - Manual admin override for special cases
+   - Comprehensive subscription-role audit trail
+   - Webhook handling for real-time role updates
 
-4. **Financial Reporting**
-   - Revenue reports by time period
-   - Subscription churn analytics
+5. **Financial Reporting & Analytics**
+   - Revenue analytics and reporting dashboard
+   - Subscription churn analytics and trends
    - Customer lifetime value calculations
-   - Payment failure analysis and recovery
+   - Payment failure analysis and recovery workflows
+   - Admin billing error tracking and resolution
+
+### Enhanced User Journey
+```
+Multi-Provider OAuth Registration -> member (free) -> Stripe Subscription -> professional (paid)
+                     ↓                                        ↑
+    Enterprise: OKTA/Azure/LinkedIn OAuth         Data Platform: Airtable OAuth 
+    Professional: GitHub OAuth            (immediate sync value + seamless upgrade)
+    Consumer: Google OAuth                        Enterprise: OKTA SSO
+                     ↓                                        ↑
+    Enhanced user data (company, role, verified email) improves billing success rate
+                     ↓
+    OKTA enterprise customers = 10x revenue potential (Fortune 500)
+```
+
+### Stripe Webhook Integration
+- **Payment Success**: Automatic role upgrade to `:professional`
+- **Payment Failed**: Grace period, then role downgrade warning
+- **Subscription Cancelled**: Role downgrade to `:member`
+- **Invoice Created**: Notification and admin visibility
+- **Customer Updated**: Sync billing information
 
 ### Testing Strategy
 - **Stripe Tests**: Test Stripe API integration and webhook handling
 - **Billing Tests**: Verify subscription CRUD operations
 - **Role Integration Tests**: Test automatic role changes
-- **Report Tests**: Verify financial reporting accuracy
+- **Webhook Tests**: Verify real-time subscription updates
+- **Payment Tests**: Test payment failure and recovery flows
 - **Security Tests**: Ensure billing data security
 
 ### Success Criteria
+- [ ] Stripe integration working in test and production mode
 - [ ] Billing dashboard with key metrics visible
 - [ ] Subscription management (create, modify, cancel) working
 - [ ] Automatic role upgrades/downgrades functional
+- [ ] Webhook processing updates roles in real-time
 - [ ] Financial reporting accurate and useful
-- [ ] Stripe integration secure and reliable
 - [ ] Payment failure handling working
 - [ ] Billing audit trail comprehensive
+- [ ] Admin can manage subscriptions and override roles
 - [ ] Performance acceptable with billing data
+
+### 💰 **Business Model Integration**
+- **Free Tier**: Multi-provider OAuth registration -> `:member` role (basic features)
+- **Paid Tier**: Stripe subscription -> `:professional` role (AI features, sync tools)
+- **Enterprise Tier**: OKTA/Azure/LinkedIn OAuth -> enhanced billing profiles -> enterprise features
+- **Fortune 500 Target**: OKTA SSO customers -> high-value enterprise contracts (10x revenue)
+- **Data Platform Integration**: Airtable OAuth -> immediate sync capability -> higher conversion
+- **Admin Management**: Full billing oversight with OAuth provider analytics including OKTA
+- **Automatic Role Management**: Seamless upgrades/downgrades based on payment status
 
 ---
 
@@ -438,16 +672,20 @@ lib/sertantai_web/live/admin/
 │   ├── admin_form.ex               # Reusable form component
 │   └── admin_modal.ex              # Modal/dialog component
 ├── users/
-│   ├── user_list_live.ex           # User management
-│   ├── user_detail_live.ex         # User details
+│   ├── user_list_live.ex           # User management with OAuth provider info
+│   ├── user_detail_live.ex         # User details with authentication history
 │   └── user_form_live.ex           # User creation/editing
 ├── organizations/
 │   ├── organization_list_live.ex   # Organization management
 │   └── organization_detail_live.ex # Organization details
+├── auth/
+│   ├── oauth_analytics_live.ex     # OAuth registration analytics
+│   └── auth_audit_live.ex          # Authentication audit trails
 ├── billing/
-│   ├── billing_dashboard_live.ex   # Billing overview
+│   ├── billing_dashboard_live.ex   # Billing overview with OAuth conversion metrics
 │   ├── subscription_list_live.ex   # Subscription management
-│   └── billing_reports_live.ex     # Financial reporting
+│   ├── billing_reports_live.ex     # Financial reporting
+│   └── customer_analytics_live.ex  # Customer lifecycle and OAuth impact
 └── system/
     ├── monitoring_live.ex          # System monitoring
     └── bulk_operations_live.ex     # Bulk operations
@@ -544,10 +782,17 @@ mix test --only integration
 - ✅ Data relationships properly managed - Multi-location support, user-sync associations
 - ✅ Analytics providing useful insights - Profile completeness, sync performance, location distribution
 
-### Phase 4 Success
-- Billing integration complete and secure
+### Phase 4a Success
+- OAuth registration and login flows working
+- Google and GitHub authentication integrated
+- Enhanced user data collection for billing
+- Admin interface shows OAuth provider info
+
+### Phase 4b Success
+- Stripe billing integration complete and secure
 - Automatic role management working
 - Financial reporting accurate
+- Real-time webhook processing functional
 
 ### Phase 5 Success
 - Advanced features polished and functional
@@ -571,10 +816,11 @@ mix test --only integration
 | **Phase 1: Foundation & Infrastructure** | ✅ **COMPLETED** | 100% | 2-3 days ✅ |
 | **Phase 2: User Management Interface** | ✅ **COMPLETED** | 100% | 3-4 days ✅ |
 | **Phase 3: Organization & Sync Management** | ✅ **COMPLETED** | 100% | 2-3 days ✅ |
-| **Phase 4: Billing Integration & Management** | 📋 **TO DO** | 0% | 4-5 days |
+| **Phase 4a: OAuth Authentication Integration** | 📋 **TO DO** | 0% | 3-4 days |
+| **Phase 4b: Stripe Billing Integration** | 📋 **TO DO** | 0% | 3-4 days |
 | **Phase 5: Advanced Features & Polish** | 📋 **TO DO** | 0% | 2-3 days |
 
-**Total Estimated Timeline: 13-18 days** | **Phases 1-3 Complete: 7 days used** | **Ahead of schedule!**
+**Total Estimated Timeline: 15-21 days** | **Phases 1-3 Complete: 7 days used** | **Ahead of schedule!**
 
 ### 🔄 **NEXT STEPS**
 1. ✅ **Review and approve this implementation plan** - COMPLETED
@@ -583,7 +829,9 @@ mix test --only integration
 4. ✅ **Create initial LiveView structure and authentication** - COMPLETED
 5. ✅ **Begin Phase 2: User Management Interface** - COMPLETED
 6. ✅ **Begin Phase 3: Organization & Sync Management** - COMPLETED
-7. 📋 **Begin Phase 4: Billing Integration & Management** - NEXT UP
+7. 📋 **Begin Phase 4a: OAuth Authentication Integration** - NEXT UP
+8. 📋 **Begin Phase 4b: Stripe Billing Integration** - AFTER OAUTH
+9. 📋 **Begin Phase 5: Advanced Features & Polish** - FINAL PHASE
 
 ### 💡 **ADVANTAGES OF CUSTOM APPROACH**
 - ✅ **Memory Control**: No memory exhaustion issues like AshAdmin

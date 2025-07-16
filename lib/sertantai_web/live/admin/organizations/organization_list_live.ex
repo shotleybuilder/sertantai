@@ -13,37 +13,21 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   
   @impl true
   def mount(_params, _session, socket) do
-    # Load organizations using Ash
-    case Ash.read(Organization, actor: socket.assigns.current_user) do
-      {:ok, organizations} ->
-        {:ok,
-         socket
-         |> assign(:organizations, organizations)
-         |> assign(:all_organizations, organizations)
-         |> assign(:search_term, "")
-         |> assign(:status_filter, "all")
-         |> assign(:verification_filter, "all")
-         |> assign(:sort_by, "organization_name")
-         |> assign(:sort_order, "asc")
-         |> assign(:selected_organizations, [])
-         |> assign(:show_organization_modal, false)
-         |> assign(:editing_organization, nil)}
-      
-      {:error, _error} ->
-        {:ok,
-         socket
-         |> put_flash(:error, "Failed to load organizations")
-         |> assign(:organizations, [])
-         |> assign(:all_organizations, [])
-         |> assign(:search_term, "")
-         |> assign(:status_filter, "all")
-         |> assign(:verification_filter, "all")
-         |> assign(:sort_by, "organization_name")
-         |> assign(:sort_order, "asc")
-         |> assign(:selected_organizations, [])
-         |> assign(:show_organization_modal, false)
-         |> assign(:editing_organization, nil)}
-    end
+    socket =
+      socket
+      |> assign(:search_term, "")
+      |> assign(:status_filter, "all")
+      |> assign(:verification_filter, "all")
+      |> assign(:sort_by, "organization_name")
+      |> assign(:sort_order, "asc")
+      |> assign(:selected_organizations, [])
+      |> assign(:show_organization_modal, false)
+      |> assign(:editing_organization, nil)
+      |> assign(:page, 1)
+      |> assign(:per_page, 25)
+      |> assign(:total_count, 0)
+    
+    {:ok, load_organizations(socket)}
   end
   
   @impl true
@@ -84,33 +68,30 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   
   @impl true
   def handle_event("search", %{"search" => search_term}, socket) do
-    organizations = filter_and_sort_organizations(socket.assigns.all_organizations, search_term, socket.assigns.status_filter, socket.assigns.verification_filter, socket.assigns.sort_by, socket.assigns.sort_order)
-    
     {:noreply,
      socket
      |> assign(:search_term, search_term)
-     |> assign(:organizations, organizations)
-     |> assign(:selected_organizations, [])}
+     |> assign(:page, 1)
+     |> assign(:selected_organizations, [])
+     |> load_organizations()}
   end
   
   def handle_event("filter_status", %{"status" => status}, socket) do
-    organizations = filter_and_sort_organizations(socket.assigns.all_organizations, socket.assigns.search_term, status, socket.assigns.verification_filter, socket.assigns.sort_by, socket.assigns.sort_order)
-    
     {:noreply,
      socket
      |> assign(:status_filter, status)
-     |> assign(:organizations, organizations)
-     |> assign(:selected_organizations, [])}
+     |> assign(:page, 1)
+     |> assign(:selected_organizations, [])
+     |> load_organizations()}
   end
   
   def handle_event("filter_verification", %{"verification" => verification}, socket) do
-    organizations = filter_and_sort_organizations(socket.assigns.all_organizations, socket.assigns.search_term, socket.assigns.status_filter, verification, socket.assigns.sort_by, socket.assigns.sort_order)
-    
     {:noreply,
      socket
      |> assign(:verification_filter, verification)
-     |> assign(:organizations, organizations)
-     |> assign(:selected_organizations, [])}
+     |> assign(:page, 1)
+     |> assign(:selected_organizations, [])
+     |> load_organizations()}
   end
   
   def handle_event("sort", %{"field" => field}, socket) do
@@ -121,13 +102,12 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
         {field, "asc"}
       end
     
-    organizations = filter_and_sort_organizations(socket.assigns.all_organizations, socket.assigns.search_term, socket.assigns.status_filter, socket.assigns.verification_filter, sort_by, sort_order)
-    
     {:noreply,
      socket
      |> assign(:sort_by, sort_by)
      |> assign(:sort_order, sort_order)
-     |> assign(:organizations, organizations)}
+     |> assign(:page, 1)
+     |> load_organizations()}
   end
   
   def handle_event("select_organization", %{"id" => id}, socket) do
@@ -151,6 +131,16 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
     {:noreply, assign(socket, :selected_organizations, [])}
   end
   
+  def handle_event("page_change", %{"page" => page}, socket) do
+    page = String.to_integer(page)
+    {:noreply, socket |> assign(:page, page) |> load_organizations()}
+  end
+  
+  def handle_event("per_page_change", %{"per_page" => per_page}, socket) do
+    per_page = String.to_integer(per_page)
+    {:noreply, socket |> assign(:per_page, per_page) |> assign(:page, 1) |> load_organizations()}
+  end
+  
   def handle_event("bulk_verify", _params, socket) do
     socket.assigns.selected_organizations
     |> Enum.each(fn id ->
@@ -163,20 +153,11 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
     end)
     
     # Reload organizations
-    case Ash.read(Organization, actor: socket.assigns.current_user) do
-      {:ok, organizations} ->
-        filtered_organizations = filter_and_sort_organizations(organizations, socket.assigns.search_term, socket.assigns.status_filter, socket.assigns.verification_filter, socket.assigns.sort_by, socket.assigns.sort_order)
-        
-        {:noreply,
-         socket
-         |> assign(:organizations, filtered_organizations)
-         |> assign(:all_organizations, organizations)
-         |> assign(:selected_organizations, [])
-         |> put_flash(:info, "Organizations verified successfully")}
-      
-      {:error, _error} ->
-        {:noreply, put_flash(socket, :error, "Failed to reload organizations")}
-    end
+    {:noreply,
+     socket
+     |> assign(:selected_organizations, [])
+     |> put_flash(:info, "Organizations verified successfully")
+     |> load_organizations()}
   end
   
   def handle_event("bulk_delete", _params, socket) do
@@ -192,20 +173,11 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
       end)
       
       # Reload organizations
-      case Ash.read(Organization, actor: socket.assigns.current_user) do
-        {:ok, organizations} ->
-          filtered_organizations = filter_and_sort_organizations(organizations, socket.assigns.search_term, socket.assigns.status_filter, socket.assigns.verification_filter, socket.assigns.sort_by, socket.assigns.sort_order)
-          
-          {:noreply,
-           socket
-           |> assign(:organizations, filtered_organizations)
-           |> assign(:all_organizations, organizations)
-           |> assign(:selected_organizations, [])
-           |> put_flash(:info, "Organizations deleted successfully")}
-        
-        {:error, _error} ->
-          {:noreply, put_flash(socket, :error, "Failed to reload organizations")}
-      end
+      {:noreply,
+       socket
+       |> assign(:selected_organizations, [])
+       |> put_flash(:info, "Organizations deleted successfully")
+       |> load_organizations()}
     else
       {:noreply, put_flash(socket, :error, "Only admins can delete organizations")}
     end
@@ -218,19 +190,10 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
           case Ash.destroy(organization, actor: socket.assigns.current_user) do
             :ok ->
               # Reload organizations
-              case Ash.read(Organization, actor: socket.assigns.current_user) do
-                {:ok, organizations} ->
-                  filtered_organizations = filter_and_sort_organizations(organizations, socket.assigns.search_term, socket.assigns.status_filter, socket.assigns.verification_filter, socket.assigns.sort_by, socket.assigns.sort_order)
-                  
-                  {:noreply,
-                   socket
-                   |> assign(:organizations, filtered_organizations)
-                   |> assign(:all_organizations, organizations)
-                   |> put_flash(:info, "Organization deleted successfully")}
-                
-                {:error, _error} ->
-                  {:noreply, put_flash(socket, :error, "Failed to reload organizations")}
-              end
+              {:noreply,
+               socket
+               |> put_flash(:info, "Organization deleted successfully")
+               |> load_organizations()}
             
             {:error, _error} ->
               {:noreply, put_flash(socket, :error, "Failed to delete organization")}
@@ -247,20 +210,11 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   @impl true
   def handle_info({:organization_created, message}, socket) do
     # Reload organizations
-    case Ash.read(Organization, actor: socket.assigns.current_user) do
-      {:ok, organizations} ->
-        filtered_organizations = filter_and_sort_organizations(organizations, socket.assigns.search_term, socket.assigns.status_filter, socket.assigns.verification_filter, socket.assigns.sort_by, socket.assigns.sort_order)
-        
-        {:noreply,
-         socket
-         |> assign(:organizations, filtered_organizations)
-         |> assign(:all_organizations, organizations)
-         |> assign(:show_organization_modal, false)
-         |> put_flash(:info, message)}
-      
-      {:error, _error} ->
-        {:noreply, put_flash(socket, :error, "Failed to reload organizations")}
-    end
+    {:noreply,
+     socket
+     |> assign(:show_organization_modal, false)
+     |> put_flash(:info, message)
+     |> load_organizations()}
   end
   
   def handle_info({:organization_updated, message}, socket) do
@@ -268,21 +222,12 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
     redirect_path = socket.assigns[:return_to] || ~p"/admin/organizations"
     
     # Reload organizations
-    case Ash.read(Organization, actor: socket.assigns.current_user) do
-      {:ok, organizations} ->
-        filtered_organizations = filter_and_sort_organizations(organizations, socket.assigns.search_term, socket.assigns.status_filter, socket.assigns.verification_filter, socket.assigns.sort_by, socket.assigns.sort_order)
-        
-        {:noreply,
-         socket
-         |> assign(:organizations, filtered_organizations)
-         |> assign(:all_organizations, organizations)
-         |> assign(:show_organization_modal, false)
-         |> put_flash(:info, message)
-         |> push_navigate(to: redirect_path)}
-      
-      {:error, _error} ->
-        {:noreply, put_flash(socket, :error, "Failed to reload organizations")}
-    end
+    {:noreply,
+     socket
+     |> assign(:show_organization_modal, false)
+     |> put_flash(:info, message)
+     |> load_organizations()
+     |> push_navigate(to: redirect_path)}
   end
   
   def handle_info({:close_modal}, socket) do
@@ -295,56 +240,127 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
      |> push_navigate(to: redirect_path)}
   end
   
-  # Helper function to filter and sort organizations
-  defp filter_and_sort_organizations(organizations, search_term, _status_filter, verification_filter, sort_by, sort_order) do
-    organizations
-    |> filter_by_search(search_term)
-    |> filter_by_verification(verification_filter)
-    |> sort_organizations(sort_by, sort_order)
-  end
-  
-  defp filter_by_search(organizations, ""), do: organizations
-  defp filter_by_search(organizations, search_term) do
-    search_lower = String.downcase(search_term)
+  # Load organizations with server-side filtering, sorting, and pagination
+  defp load_organizations(socket) do
+    {query, count_query} = build_organization_query(socket)
     
-    Enum.filter(organizations, fn org ->
-      String.contains?(String.downcase(org.organization_name), search_lower) or
-      String.contains?(String.downcase(org.email_domain), search_lower) or
-      (org.core_profile["industry_sector"] && String.contains?(String.downcase(org.core_profile["industry_sector"]), search_lower))
-    end)
-  end
-  
-  defp filter_by_verification(organizations, "all"), do: organizations
-  defp filter_by_verification(organizations, "verified") do
-    Enum.filter(organizations, & &1.verified)
-  end
-  defp filter_by_verification(organizations, "unverified") do
-    Enum.filter(organizations, &(!&1.verified))
-  end
-  
-  defp sort_organizations(organizations, sort_by, sort_order) do
-    sorted = 
-      case sort_by do
-        "organization_name" ->
-          Enum.sort_by(organizations, & &1.organization_name)
-        "email_domain" ->
-          Enum.sort_by(organizations, & &1.email_domain)
-        "verified" ->
-          Enum.sort_by(organizations, & &1.verified)
-        "inserted_at" ->
-          Enum.sort_by(organizations, & &1.inserted_at, DateTime)
-        "profile_completeness_score" ->
-          Enum.sort_by(organizations, & &1.profile_completeness_score)
-        _ ->
-          organizations
-      end
-    
-    if sort_order == "desc" do
-      Enum.reverse(sorted)
+    with {:ok, organizations} <- Ash.read(apply_pagination(query, socket.assigns.page, socket.assigns.per_page), actor: socket.assigns.current_user),
+         {:ok, total_count} <- Ash.count(count_query, actor: socket.assigns.current_user) do
+      socket
+      |> assign(:organizations, organizations)
+      |> assign(:total_count, total_count)
     else
-      sorted
+      {:error, _} ->
+        socket
+        |> assign(:organizations, [])
+        |> assign(:total_count, 0)
+        |> put_flash(:error, "Failed to load organizations")
     end
   end
+  
+  # Build organization query with filters and sorting
+  defp build_organization_query(socket) do
+    query = Organization
+      |> apply_search_filter(socket.assigns.search_term)
+      |> apply_verification_filter(socket.assigns.verification_filter)
+      |> apply_sorting(socket.assigns.sort_by, socket.assigns.sort_order)
+    
+    count_query = Organization
+      |> apply_search_filter(socket.assigns.search_term)
+      |> apply_verification_filter(socket.assigns.verification_filter)
+    
+    {query, count_query}
+  end
+  
+  # Apply search filter to query
+  defp apply_search_filter(query, ""), do: query
+  defp apply_search_filter(query, search_term) do
+    require Ash.Query
+    import Ash.Expr
+    
+    query
+    |> Ash.Query.filter(
+      expr(
+        contains(organization_name, ^search_term) or
+        contains(email_domain, ^search_term) or
+        contains(fragment("(?->>'industry_sector')", core_profile), ^search_term)
+      )
+    )
+  end
+  
+  # Apply verification filter to query
+  defp apply_verification_filter(query, "all"), do: query
+  defp apply_verification_filter(query, "verified") do
+    require Ash.Query
+    import Ash.Expr
+    
+    query |> Ash.Query.filter(expr(verified == true))
+  end
+  defp apply_verification_filter(query, "unverified") do
+    require Ash.Query
+    import Ash.Expr
+    
+    query |> Ash.Query.filter(expr(verified == false))
+  end
+  
+  # Apply sorting to query
+  defp apply_sorting(query, sort_by, sort_order) do
+    require Ash.Query
+    
+    sort_order_atom = if sort_order == "desc", do: :desc, else: :asc
+    
+    case sort_by do
+      "organization_name" ->
+        query |> Ash.Query.sort(organization_name: sort_order_atom)
+      "email_domain" ->
+        query |> Ash.Query.sort(email_domain: sort_order_atom)
+      "verified" ->
+        query |> Ash.Query.sort(verified: sort_order_atom)
+      "inserted_at" ->
+        query |> Ash.Query.sort(inserted_at: sort_order_atom)
+      "profile_completeness_score" ->
+        query |> Ash.Query.sort(profile_completeness_score: sort_order_atom)
+      "organization_type" ->
+        # Sort by organization type in core_profile - for now, sort by organization name
+        # TODO: Implement proper JSON field sorting when Ash supports it better
+        query |> Ash.Query.sort(organization_name: sort_order_atom)
+      _ ->
+        query |> Ash.Query.sort(organization_name: :asc)
+    end
+  end
+  
+  # Apply pagination to query
+  defp apply_pagination(query, page, per_page) do
+    require Ash.Query
+    
+    offset = (page - 1) * per_page
+    query
+    |> Ash.Query.limit(per_page)
+    |> Ash.Query.offset(offset)
+  end
+  
+  # Helper function for pagination display
+  defp pagination_info(assigns) do
+    %{
+      start: (assigns.page - 1) * assigns.per_page + 1,
+      end: min(assigns.page * assigns.per_page, assigns.total_count),
+      total: assigns.total_count
+    }
+  end
+  
+  # Calculate total pages
+  defp total_pages(assigns) do
+    ceil(assigns.total_count / assigns.per_page)
+  end
+  
+  # Generate page numbers for pagination
+  defp pagination_pages(current_page, total_pages) do
+    start_page = max(1, current_page - 2)
+    end_page = min(total_pages, current_page + 2)
+    
+    start_page..end_page |> Enum.to_list()
+  end
+  
   
   @impl true
   def render(assigns) do
@@ -431,7 +447,7 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
           <!-- Results Info -->
           <div class="flex items-center justify-between">
             <span class="text-sm text-gray-500">
-              <%= length(@organizations) %> organization(s)
+              <%= @total_count %> organization(s) total
             </span>
             <%= if length(@selected_organizations) > 0 do %>
               <span class="text-sm font-medium text-blue-600">
@@ -476,9 +492,17 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
         </div>
       <% end %>
 
+      <!-- Mobile scroll notice -->
+      <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 md:hidden mb-4">
+        <p class="text-sm text-blue-800">
+          💡 Swipe horizontally to see all columns
+        </p>
+      </div>
+
       <!-- Organizations Table -->
       <div class="bg-white shadow rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200" style="min-width: 1200px;">
           <thead class="bg-gray-50">
             <tr>
               <th class="w-8 px-6 py-3">
@@ -497,6 +521,25 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
                 <div class="flex items-center space-x-1">
                   <span>Organization</span>
                   <%= if @sort_by == "organization_name" do %>
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <%= if @sort_order == "asc" do %>
+                        <path d="M5 8l5-5 5 5H5z"/>
+                      <% else %>
+                        <path d="M15 12l-5 5-5-5h10z"/>
+                      <% end %>
+                    </svg>
+                  <% end %>
+                </div>
+              </th>
+              
+              <th
+                phx-click="sort"
+                phx-value-field="organization_type"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              >
+                <div class="flex items-center space-x-1">
+                  <span>Type</span>
+                  <%= if @sort_by == "organization_type" do %>
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <%= if @sort_order == "asc" do %>
                         <path d="M5 8l5-5 5 5H5z"/>
@@ -607,13 +650,17 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
                   />
                 </td>
                 
-                <td class="px-6 py-4">
-                  <div class="text-sm font-medium text-gray-900">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <.link
+                    patch={~p"/admin/organizations/#{organization.id}/edit?return_to=#{URI.encode("/admin/organizations")}"}
+                    class="text-blue-600 hover:text-blue-800 font-medium"
+                  >
                     <%= organization.organization_name %>
-                  </div>
-                  <div class="text-sm text-gray-500">
-                    Type: <%= organization.core_profile["organization_type"] || "Not specified" %>
-                  </div>
+                  </.link>
+                </td>
+                
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= organization.core_profile["organization_type"] || "Not specified" %>
                 </td>
                 
                 <td class="px-6 py-4 text-sm text-gray-900">
@@ -693,7 +740,97 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
             </p>
           </div>
         <% end %>
+        </div>
       </div>
+      
+      <!-- Pagination Controls -->
+      <%= if @total_count > 0 do %>
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div class="flex-1 flex justify-between sm:hidden">
+            <!-- Mobile pagination -->
+            <button
+              phx-click="page_change"
+              phx-value-page={@page - 1}
+              disabled={@page <= 1}
+              class={"relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 #{if @page <= 1, do: "cursor-not-allowed opacity-50"}"}
+            >
+              Previous
+            </button>
+            <button
+              phx-click="page_change"
+              phx-value-page={@page + 1}
+              disabled={@page >= total_pages(assigns)}
+              class={"ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 #{if @page >= total_pages(assigns), do: "cursor-not-allowed opacity-50"}"}
+            >
+              Next
+            </button>
+          </div>
+          
+          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <%
+                info = pagination_info(assigns)
+              %>
+              <p class="text-sm text-gray-700">
+                Showing <span class="font-medium"><%= info.start %></span> to 
+                <span class="font-medium"><%= info.end %></span> of 
+                <span class="font-medium"><%= info.total %></span> organizations
+              </p>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+              <div class="flex items-center space-x-2">
+                <label class="text-sm text-gray-700">Show:</label>
+                <select phx-change="per_page_change" name="per_page" value={@per_page} class="rounded-md border-gray-300 text-sm">
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+              
+              <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <!-- Previous button -->
+                <button
+                  phx-click="page_change"
+                  phx-value-page={@page - 1}
+                  disabled={@page <= 1}
+                  class={"relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 #{if @page <= 1, do: "cursor-not-allowed opacity-50"}"}
+                >
+                  Previous
+                </button>
+                
+                <!-- Page numbers -->
+                <%= for page_num <- pagination_pages(@page, total_pages(assigns)) do %>
+                  <button
+                    phx-click="page_change"
+                    phx-value-page={page_num}
+                    class={
+                      if page_num == @page do
+                        "bg-blue-50 border-blue-500 text-blue-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                      else
+                        "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                      end
+                    }
+                  >
+                    <%= page_num %>
+                  </button>
+                <% end %>
+                
+                <!-- Next button -->
+                <button
+                  phx-click="page_change"
+                  phx-value-page={@page + 1}
+                  disabled={@page >= total_pages(assigns)}
+                  class={"relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 #{if @page >= total_pages(assigns), do: "cursor-not-allowed opacity-50"}"}
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
 
     <!-- Organization Form Modal -->

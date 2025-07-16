@@ -603,12 +603,12 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
                     <div class="w-16 bg-gray-200 rounded-full h-2">
                       <div
                         class="bg-blue-600 h-2 rounded-full"
-                        style={"width: #{round((organization.profile_completeness_score || 0) * 100)}%"}
+                        style={"width: #{round(Decimal.to_float(organization.profile_completeness_score || 0) * 100)}%"}
                       >
                       </div>
                     </div>
                     <span class="ml-2 text-sm text-gray-600">
-                      <%= round((organization.profile_completeness_score || 0) * 100) %>%
+                      <%= round(Decimal.to_float(organization.profile_completeness_score || 0) * 100) %>%
                     </span>
                   </div>
                 </td>

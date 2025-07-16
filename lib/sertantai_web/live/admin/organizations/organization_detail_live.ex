@@ -406,20 +406,20 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationDetailLive do
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-700">Overall</span>
               <span class="text-sm text-gray-500">
-                <%= round((@organization.profile_completeness_score || 0) * 100) %>%
+                <%= round(Decimal.to_float(@organization.profile_completeness_score || 0) * 100) %>%
               </span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
                 class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={"width: #{round((@organization.profile_completeness_score || 0) * 100)}%"}
+                style={"width: #{round(Decimal.to_float(@organization.profile_completeness_score || 0) * 100)}%"}
               >
               </div>
             </div>
           </div>
           
           <div class="space-y-2 text-sm">
-            <%= if (@organization.profile_completeness_score || 0) < 0.5 do %>
+            <%= if Decimal.to_float(@organization.profile_completeness_score || 0) < 0.5 do %>
               <p class="text-yellow-600">⚠️ Profile needs more information</p>
             <% else %>
               <p class="text-green-600">✅ Profile is well-populated</p>
@@ -661,7 +661,7 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationDetailLive do
           <div class="flex justify-between items-center">
             <span class="text-sm text-gray-600">Profile Completeness</span>
             <span class="text-lg font-semibold text-gray-900">
-              <%= round((@organization.profile_completeness_score || 0) * 100) %>%
+              <%= round(Decimal.to_float(@organization.profile_completeness_score || 0) * 100) %>%
             </span>
           </div>
           

@@ -183,6 +183,7 @@ The admin user page (`/admin/users`) currently has:
 - `c5703fe` - Add horizontal scrolling to user admin table for better mobile experience
 - `d19b734` - Fix admin page flow navigation with return_to parameter support
 - `b9e3a9b` - Add breadcrumb navigation to admin pages for better UX
+- `f48fd78` - Complete user admin page transformation with clickable name links
 
 ### Completed Features
 - ✅ Organization display with clickable links to edit organization

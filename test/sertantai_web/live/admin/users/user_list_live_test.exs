@@ -192,7 +192,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       # Should show modal for new user
       assert html =~ "Create New User"
       assert html =~ "Email Address"
-      assert html =~ "Password"
+      assert html =~ ~s(type="password")  # Password input field should be present when creating
       assert html =~ "Role"
     end
     
@@ -222,7 +222,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       # Should show modal for editing user
       assert html =~ "Edit User"
       assert html =~ to_string(user_to_edit.email)
-      refute html =~ "Password"  # No password field when editing
+      refute html =~ ~s(type="password")  # No password input field when editing
     end
     
     test "sorting controls display correctly" do

@@ -23,7 +23,7 @@ defmodule SertantaiWeb.Router do
   end
 
   pipeline :require_authenticated_user do
-    plug :require_authenticated_user
+    plug :require_authenticated_user_api
   end
 
   pipeline :require_authenticated_user_liveview do
@@ -31,11 +31,11 @@ defmodule SertantaiWeb.Router do
   end
 
   pipeline :require_admin_authentication do
-    plug :require_admin_authentication
+    plug :require_admin_authentication_custom
   end
 
   # Authentication plug for API routes (bearer token based)
-  def require_authenticated_user(conn, _opts) do
+  def require_authenticated_user_api(conn, _opts) do
     case AshAuthentication.Plug.Helpers.retrieve_from_bearer(conn, Sertantai.Accounts.User) do
       {:ok, user} when not is_nil(user) ->
         # User is authenticated via bearer token
@@ -58,7 +58,7 @@ defmodule SertantaiWeb.Router do
   end
 
   # Authentication plug for admin routes (session based with role check)
-  def require_admin_authentication(conn, _opts) do
+  def require_admin_authentication_custom(conn, _opts) do
     case AshAuthentication.Plug.Helpers.retrieve_from_session(conn, Sertantai.Accounts.User) do
       {:ok, user} when not is_nil(user) ->
         # Check if user has admin or support role

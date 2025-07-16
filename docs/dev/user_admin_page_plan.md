@@ -176,18 +176,20 @@ The admin user page (`/admin/users`) currently has:
 
 ## Implementation Status
 
-**Current Progress: 100% complete**
+**Current Progress: 100% complete** ✅ **DEPLOYED**
+
+**Git Commit:** `aaea565` - Implement user admin page enhancements with organization display and pagination
 
 ### Completed Features
 - ✅ Organization display with clickable links to edit organization
 - ✅ Email domain-based organization lookup functionality  
 - ✅ Server-side pagination with configurable page sizes (10, 25, 50, 100)
 - ✅ Organization column sorting (uses email domain as proxy)
-- ✅ Mobile responsive design with hidden columns and stacked controls
+- ✅ Mobile responsive design with horizontal table scrolling
 - ✅ Server-side filtering and search using Ash queries
 - ✅ Comprehensive test coverage for all new functionality
 - ✅ Pagination controls with Previous/Next and page numbers
-- ✅ Mobile-friendly organization display under user names
+- ✅ Horizontal scrolling for long user records with mobile scroll notice
 - ✅ Optimized database queries replacing memory filtering
 
 ### Implementation Details
@@ -201,6 +203,13 @@ The admin user page (`/admin/users`) currently has:
   - `apply_pagination/3` - Handles pagination with offset/limit
   - `pagination_info/1` - Formats pagination display info
   - `total_pages/1` - Calculates total pages for pagination
+
+### Horizontal Scrolling Implementation
+- **Wrapper Element**: Added `overflow-x-auto` div around table (line 544)
+- **Table Width**: Set minimum width of 1000px via inline style (line 545)
+- **Mobile Notice**: Added horizontal scroll notice for mobile users (lines 535-542)
+- **All Columns Visible**: Removed responsive hiding classes to show all columns
+- **Test Updates**: Updated tests to verify horizontal scrolling behavior instead of column hiding
 
 ### Architecture Changes
 - **Server-side Filtering**: Replaced memory filtering with Ash query filters

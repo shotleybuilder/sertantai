@@ -531,7 +531,18 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
       
       <!-- Users Table -->
       <div class="bg-white shadow overflow-hidden rounded-lg">
-        <table class="min-w-full divide-y divide-gray-200">
+        <!-- Horizontal scroll notice for mobile -->
+        <div class="md:hidden px-4 py-2 bg-gray-100 text-sm text-gray-600 border-b">
+          <div class="flex items-center">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Swipe horizontally to see all columns
+          </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200" style="min-width: 1000px;">
           <thead class="bg-gray-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -580,7 +591,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                 </button>
               </th>
               
-              <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6 px-3">
                 <button
                   phx-click="sort"
                   phx-value-field="organization"
@@ -618,7 +629,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                 </button>
               </th>
               
-              <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6 px-3">
                 <button
                   phx-click="sort"
                   phx-value-field="inserted_at"
@@ -646,7 +657,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
           <tbody class="bg-white divide-y divide-gray-200">
             <%= for user <- @users do %>
               <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4 whitespace-nowrap sm:px-6 px-3">
                   <input
                     type="checkbox"
                     phx-click="select_user"
@@ -656,13 +667,13 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                   />
                 </td>
                 
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4 whitespace-nowrap sm:px-6 px-3">
                   <div class="text-sm font-medium text-gray-900">
                     <%= user.email %>
                   </div>
                 </td>
                 
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4 whitespace-nowrap sm:px-6 px-3">
                   <div class="text-sm text-gray-900">
                     <%= if user.first_name || user.last_name do %>
                       <%= [user.first_name, user.last_name] |> Enum.filter(& &1) |> Enum.join(" ") %>
@@ -670,22 +681,13 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                       <span class="text-gray-400">No name</span>
                     <% end %>
                   </div>
-                  <!-- Mobile-only organization info -->
-                  <div class="sm:hidden text-xs text-gray-500 mt-1">
-                    <%= case get_user_organization(user, assigns.organizations_by_domain) do %>
-                      <% nil -> %>
-                        <span>No organization</span>
-                      <% org -> %>
-                        <span>Org: <%= org.organization_name %></span>
-                    <% end %>
-                  </div>
                 </td>
                 
-                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 sm:px-6 px-3">
                   <%= render_user_organization(assigns, user) %>
                 </td>
                 
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4 whitespace-nowrap sm:px-6 px-3">
                   <span class={[
                     "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
                     case user.role do
@@ -700,11 +702,11 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                   </span>
                 </td>
                 
-                <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 sm:px-6 px-3">
                   <%= Calendar.strftime(user.inserted_at, "%Y-%m-%d") %>
                 </td>
                 
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sm:px-6 px-3">
                   <div class="flex justify-end space-x-2">
                     <.link
                       patch={~p"/admin/users/#{user.id}/edit"}
@@ -730,19 +732,14 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
             
             <%= if @users == [] do %>
               <tr>
-                <td class="px-6 py-4 text-center text-gray-500 md:hidden" colspan="5">
-                  No users found matching your criteria.
-                </td>
-                <td class="hidden md:table-cell px-6 py-4 text-center text-gray-500 sm:hidden" colspan="6">
-                  No users found matching your criteria.
-                </td>
-                <td class="hidden sm:table-cell px-6 py-4 text-center text-gray-500" colspan="7">
+                <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                   No users found matching your criteria.
                 </td>
               </tr>
             <% end %>
           </tbody>
         </table>
+        </div>
       </div>
       
       <!-- Pagination Controls -->

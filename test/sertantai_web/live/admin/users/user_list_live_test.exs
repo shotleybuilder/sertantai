@@ -361,7 +361,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       assert html =~ "M5 15l7-7 7 7"  # Ascending arrow for organization
     end
     
-    test "mobile view shows organization info under user name" do
+    test "mobile view shows horizontal scroll notice" do
       admin = user_fixture(%{role: :admin})
       organization = organization_fixture(%{email_domain: "example.com", organization_name: "Example Corp", created_by_user_id: admin.id, actor: admin})
       user_with_org = user_fixture(%{role: :member, email: "user@example.com", first_name: "John", last_name: "Doe"})
@@ -389,9 +389,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       
       html = render_component(&UserListLive.render/1, socket.assigns)
       
-      # Should show organization info in mobile view
-      assert html =~ "sm:hidden"
-      assert html =~ "Org: Example Corp"
+      # Should show horizontal scroll notice for mobile
+      assert html =~ "md:hidden"
+      assert html =~ "Swipe horizontally to see all columns"
+      assert html =~ "Example Corp"
     end
   end
   
@@ -502,7 +503,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
   end
   
   describe "mobile responsive design" do
-    test "hides organization column on mobile" do
+    test "shows horizontal scroll wrapper and minimum table width" do
       admin = user_fixture(%{role: :admin})
       
       socket = %Socket{
@@ -528,12 +529,13 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       
       html = render_component(&UserListLive.render/1, socket.assigns)
       
-      # Organization column should be hidden on mobile
-      assert html =~ "hidden sm:table-cell"
+      # Should show horizontal scroll wrapper and minimum table width
+      assert html =~ "overflow-x-auto"
+      assert html =~ "min-width: 1000px"
       assert html =~ "Organization"
     end
     
-    test "hides created date column on mobile" do
+    test "shows all columns with horizontal scrolling" do
       admin = user_fixture(%{role: :admin})
       
       socket = %Socket{
@@ -559,9 +561,11 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       
       html = render_component(&UserListLive.render/1, socket.assigns)
       
-      # Created column should be hidden on mobile
-      assert html =~ "hidden md:table-cell"
+      # All columns should be visible with horizontal scrolling
       assert html =~ "Created"
+      assert html =~ "Organization"
+      assert html =~ "Actions"
+      assert html =~ "overflow-x-auto"
     end
     
     test "mobile pagination shows simplified controls" do

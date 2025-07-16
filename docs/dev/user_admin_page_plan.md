@@ -191,6 +191,7 @@ The admin user page (`/admin/users`) currently has:
 - ✅ Pagination controls with Previous/Next and page numbers
 - ✅ Horizontal scrolling for long user records with mobile scroll notice
 - ✅ Optimized database queries replacing memory filtering
+- ✅ Fixed page flow navigation with return_to parameter support
 
 ### Implementation Details
 - **File Updated**: `/lib/sertantai_web/live/admin/users/user_list_live.ex:32-408`
@@ -210,6 +211,13 @@ The admin user page (`/admin/users`) currently has:
 - **Mobile Notice**: Added horizontal scroll notice for mobile users (lines 535-542)
 - **All Columns Visible**: Removed responsive hiding classes to show all columns
 - **Test Updates**: Updated tests to verify horizontal scrolling behavior instead of column hiding
+
+### Page Flow Navigation Fix
+- **Return Parameter**: Added `return_to` URL parameter to organization links from user admin page
+- **Organization Edit**: Updated organization list live view to capture and use return_to parameter
+- **Navigation Handling**: Modified `handle_info` functions to redirect back to source page after edit/cancel
+- **Fallback Support**: Maintains backward compatibility with default redirect to `/admin/organizations`
+- **Test Coverage**: Added test to verify return_to parameter is correctly included in organization links
 
 ### Architecture Changes
 - **Server-side Filtering**: Replaced memory filtering with Ash query filters

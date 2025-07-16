@@ -325,6 +325,9 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       assert html =~ "Example Corp"
       assert html =~ "/admin/organizations/#{organization.id}/edit"
       
+      # Should include return_to parameter in organization link
+      assert html =~ "return_to=%2Fadmin%2Fusers"
+      
       # Should show "None" for user without organization
       assert html =~ "None"
     end

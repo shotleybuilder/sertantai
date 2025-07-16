@@ -383,7 +383,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
         assigns = assign(assigns, :org, org)
         ~H"""
         <.link
-          navigate={~p"/admin/organizations/#{@org.id}/edit"}
+          navigate={~p"/admin/organizations/#{@org.id}/edit?return_to=#{URI.encode("/admin/users")}"}
           class="text-blue-600 hover:text-blue-800"
         >
           <%= @org.organization_name %>

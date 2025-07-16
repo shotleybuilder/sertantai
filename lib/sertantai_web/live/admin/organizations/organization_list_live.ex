@@ -48,6 +48,10 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   
   @impl true
   def handle_params(params, _url, socket) do
+    socket = 
+      socket
+      |> assign(:return_to, params["return_to"])
+    
     {:noreply, apply_action(socket, socket.assigns.live_action, params)}
   end
   
@@ -260,6 +264,9 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   end
   
   def handle_info({:organization_updated, message}, socket) do
+    # Determine where to redirect after update
+    redirect_path = socket.assigns[:return_to] || ~p"/admin/organizations"
+    
     # Reload organizations
     case Ash.read(Organization, actor: socket.assigns.current_user) do
       {:ok, organizations} ->
@@ -270,7 +277,8 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
          |> assign(:organizations, filtered_organizations)
          |> assign(:all_organizations, organizations)
          |> assign(:show_organization_modal, false)
-         |> put_flash(:info, message)}
+         |> put_flash(:info, message)
+         |> push_navigate(to: redirect_path)}
       
       {:error, _error} ->
         {:noreply, put_flash(socket, :error, "Failed to reload organizations")}
@@ -278,10 +286,13 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   end
   
   def handle_info({:close_modal}, socket) do
+    # Determine where to redirect after closing modal
+    redirect_path = socket.assigns[:return_to] || ~p"/admin/organizations"
+    
     {:noreply,
      socket
      |> assign(:show_organization_modal, false)
-     |> push_patch(to: ~p"/admin/organizations")}
+     |> push_navigate(to: redirect_path)}
   end
   
   # Helper function to filter and sort organizations

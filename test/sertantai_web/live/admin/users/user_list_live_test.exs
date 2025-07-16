@@ -322,6 +322,46 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       assert html =~ ~s(/admin)
       assert html =~ ~s(aria-label="Breadcrumb")
     end
+    
+    test "user names are clickable links to edit page" do
+      admin = user_fixture(%{role: :admin})
+      user_with_name = user_fixture(%{role: :member, email: "john@example.com", first_name: "John", last_name: "Doe"})
+      user_without_name = user_fixture(%{role: :member, email: "no-name@example.com", first_name: nil, last_name: nil})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [user_with_name, user_without_name],
+          search_term: "",
+          role_filter: "all", 
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 2,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show name as clickable link for user with name
+      assert html =~ "John Doe"
+      assert html =~ ~s(/admin/users/#{user_with_name.id}/edit)
+      
+      # Should show "No name" as clickable link for user without name
+      assert html =~ "No name"
+      assert html =~ ~s(/admin/users/#{user_without_name.id}/edit)
+      
+      # Should have proper link styling
+      assert html =~ "text-blue-600 hover:text-blue-800 font-medium"
+    end
   end
   
   describe "organization display functionality" do

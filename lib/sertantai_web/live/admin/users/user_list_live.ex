@@ -701,11 +701,21 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                 </td>
                 
                 <td class="px-6 py-4 whitespace-nowrap sm:px-6 px-3">
-                  <div class="text-sm text-gray-900">
+                  <div class="text-sm">
                     <%= if user.first_name || user.last_name do %>
-                      <%= [user.first_name, user.last_name] |> Enum.filter(& &1) |> Enum.join(" ") %>
+                      <.link
+                        patch={~p"/admin/users/#{user.id}/edit"}
+                        class="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        <%= [user.first_name, user.last_name] |> Enum.filter(& &1) |> Enum.join(" ") %>
+                      </.link>
                     <% else %>
-                      <span class="text-gray-400">No name</span>
+                      <.link
+                        patch={~p"/admin/users/#{user.id}/edit"}
+                        class="text-gray-400 hover:text-gray-600 font-medium"
+                      >
+                        No name
+                      </.link>
                     <% end %>
                   </div>
                 </td>

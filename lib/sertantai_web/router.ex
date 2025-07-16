@@ -10,7 +10,7 @@ defmodule SertantaiWeb.Router do
     plug :put_root_layout, html: {SertantaiWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
-    plug :load_from_session
+    plug :load_current_user
   end
 
   pipeline :api do
@@ -31,7 +31,7 @@ defmodule SertantaiWeb.Router do
   end
 
   pipeline :require_admin_authentication do
-    plug :require_admin_authentication_custom
+    plug :require_admin_authentication_simple
   end
 
   # Authentication plug for API routes (bearer token based)
@@ -57,30 +57,40 @@ defmodule SertantaiWeb.Router do
     conn
   end
 
-  # Authentication plug for admin routes (session based with role check)
-  def require_admin_authentication_custom(conn, _opts) do
-    case AshAuthentication.Plug.Helpers.retrieve_from_session(conn, Sertantai.Accounts.User) do
-      {:ok, user} when not is_nil(user) ->
-        # Check if user has admin or support role
-        case user.role do
-          role when role in [:admin, :support] ->
-            # User has admin access, continue
-            conn
-            |> Plug.Conn.assign(:current_user, user)
-            |> AshAuthentication.Plug.Helpers.set_actor(user)
+  # Load current user from session using AshAuthentication
+  def load_current_user(conn, _opts) do
+    # retrieve_from_session loads users and stores them in assigns with current_ prefix
+    conn = AshAuthentication.Plug.Helpers.retrieve_from_session(conn, :sertantai)
+    
+    # The user should now be in conn.assigns.current_user
+    case conn.assigns[:current_user] do
+      nil ->
+        conn
+      _user ->
+        # Set the actor for Ash authorization
+        AshAuthentication.Plug.Helpers.set_actor(conn, :user)
+    end
+  end
 
-          _ ->
-            # User doesn't have admin privileges
-            conn
-            |> Phoenix.Controller.put_flash(:error, "You don't have permission to access the admin area.")
-            |> Phoenix.Controller.redirect(to: "/dashboard")
-            |> Plug.Conn.halt()
-        end
+  # Simple admin authentication that works with browser sessions
+  def require_admin_authentication_simple(conn, _opts) do
+    # Get the current user from conn.assigns (set by :load_current_user in browser pipeline)
+    case conn.assigns[:current_user] do
+      %{role: role} when role in [:admin, :support] ->
+        # User has admin access, continue
+        conn
 
-      _ ->
+      %{role: role} ->
+        # User is authenticated but doesn't have admin privileges
+        conn
+        |> Phoenix.Controller.put_flash(:error, "You don't have permission to access the admin area. Your role: #{role}")
+        |> Phoenix.Controller.redirect(to: "/dashboard")
+        |> Plug.Conn.halt()
+
+      nil ->
         # User is not authenticated, redirect to login
         conn
-        |> Phoenix.Controller.put_flash(:error, "You must be logged in to access this page.")
+        |> Phoenix.Controller.put_flash(:error, "Please log in to access admin features.")
         |> Phoenix.Controller.redirect(to: "/login")
         |> Plug.Conn.halt()
     end
@@ -173,29 +183,34 @@ defmodule SertantaiWeb.Router do
   scope "/admin", SertantaiWeb.Admin do
     pipe_through [:browser, :require_admin_authentication]
     
-    live "/", AdminLive, :dashboard
-    
-    # User Management Routes
-    live "/users", Users.UserListLive, :index
-    live "/users/new", Users.UserListLive, :new
-    live "/users/:id/edit", Users.UserListLive, :edit
-    live "/users/:id", Users.UserDetailLive, :show
-    
-    # Organization Management Routes
-    live "/organizations", Organizations.OrganizationListLive, :index
-    live "/organizations/new", Organizations.OrganizationListLive, :new
-    live "/organizations/:id/edit", Organizations.OrganizationListLive, :edit
-    live "/organizations/:id", Organizations.OrganizationDetailLive, :show
-    live "/organizations/:id/locations/new", Organizations.OrganizationDetailLive, :new_location
-    live "/organizations/:id/locations/:location_id/edit", Organizations.OrganizationDetailLive, :edit_location
-    
-    # Sync Configuration Management Routes
-    live "/sync", Sync.SyncListLive, :index
-    live "/sync/new", Sync.SyncListLive, :new
-    live "/sync/:id/edit", Sync.SyncListLive, :edit
-    live "/sync/:id", Sync.SyncDetailLive, :show
-    live "/billing", BillingDashboardLive, :index
-    live "/system", SystemMonitoringLive, :index
+    live_session :admin,
+      on_mount: AshAuthentication.Phoenix.LiveSession,
+      session: {AshAuthentication.Phoenix.LiveSession, :generate_session, []} do
+      
+      live "/", AdminLive, :dashboard
+      
+      # User Management Routes
+      live "/users", Users.UserListLive, :index
+      live "/users/new", Users.UserListLive, :new
+      live "/users/:id/edit", Users.UserListLive, :edit
+      live "/users/:id", Users.UserDetailLive, :show
+      
+      # Organization Management Routes
+      live "/organizations", Organizations.OrganizationListLive, :index
+      live "/organizations/new", Organizations.OrganizationListLive, :new
+      live "/organizations/:id/edit", Organizations.OrganizationListLive, :edit
+      live "/organizations/:id", Organizations.OrganizationDetailLive, :show
+      live "/organizations/:id/locations/new", Organizations.OrganizationDetailLive, :new_location
+      live "/organizations/:id/locations/:location_id/edit", Organizations.OrganizationDetailLive, :edit_location
+      
+      # Sync Configuration Management Routes
+      live "/sync", Sync.SyncListLive, :index
+      live "/sync/new", Sync.SyncListLive, :new
+      live "/sync/:id/edit", Sync.SyncListLive, :edit
+      live "/sync/:id", Sync.SyncDetailLive, :show
+      live "/billing", BillingDashboardLive, :index
+      live "/system", SystemMonitoringLive, :index
+    end
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

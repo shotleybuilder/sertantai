@@ -289,6 +289,39 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       # Should show sort indicator for email column
       assert html =~ "M5 15l7-7 7 7"  # Ascending arrow for email
     end
+    
+    test "breadcrumb navigation is present" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all", 
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show breadcrumb navigation
+      assert html =~ "Admin Dashboard"
+      assert html =~ "User Management"
+      assert html =~ ~s(/admin)
+      assert html =~ ~s(aria-label="Breadcrumb")
+    end
   end
   
   describe "organization display functionality" do

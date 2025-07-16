@@ -350,6 +350,33 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   def render(assigns) do
     ~H"""
     <div class="space-y-6">
+      <!-- Breadcrumb Navigation -->
+      <nav class="mb-4" aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2 text-sm text-gray-500">
+          <li>
+            <.link
+              navigate={~p"/admin"}
+              class="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5v4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 5v4" />
+              </svg>
+              Admin Dashboard
+            </.link>
+          </li>
+          <li>
+            <svg class="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </li>
+          <li class="text-gray-900 font-medium">
+            Organization Management
+          </li>
+        </ol>
+      </nav>
+      
       <!-- Header -->
       <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">

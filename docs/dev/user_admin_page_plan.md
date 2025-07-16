@@ -195,6 +195,7 @@ The admin user page (`/admin/users`) currently has:
 - ✅ Horizontal scrolling for long user records with mobile scroll notice
 - ✅ Optimized database queries replacing memory filtering
 - ✅ Fixed page flow navigation with return_to parameter support
+- ✅ Added breadcrumb navigation to admin pages for better UX
 
 ### Implementation Details
 - **File Updated**: `/lib/sertantai_web/live/admin/users/user_list_live.ex:32-408`
@@ -221,6 +222,13 @@ The admin user page (`/admin/users`) currently has:
 - **Navigation Handling**: Modified `handle_info` functions to redirect back to source page after edit/cancel
 - **Fallback Support**: Maintains backward compatibility with default redirect to `/admin/organizations`
 - **Test Coverage**: Added test to verify return_to parameter is correctly included in organization links
+
+### Breadcrumb Navigation Enhancement
+- **Admin Navigation**: Added breadcrumb navigation to both user and organization admin pages
+- **Consistent Design**: Dashboard icon, chevron separators, and hover states across all admin pages
+- **Accessibility**: Proper ARIA labels and semantic HTML structure for screen readers
+- **Return Navigation**: Clear path back to main admin dashboard from any sub-page
+- **Test Coverage**: Added test to verify breadcrumb navigation presence and functionality
 
 ### Architecture Changes
 - **Server-side Filtering**: Replaced memory filtering with Ash query filters

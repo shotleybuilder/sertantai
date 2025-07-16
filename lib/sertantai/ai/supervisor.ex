@@ -6,6 +6,7 @@ defmodule Sertantai.AI.Supervisor do
 
   use Supervisor
   require Logger
+  require Ash.Query
 
   def start_link(init_arg) do
     Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
@@ -57,11 +58,11 @@ defmodule Sertantai.AI.Supervisor do
     
     try do
       # Find all interrupted sessions
-      case ConversationSession.read() do
-        {:ok, all_sessions} ->
-          interrupted_sessions = Enum.filter(all_sessions, fn session ->
-            session.session_status == :interrupted
-          end)
+      query = ConversationSession
+        |> Ash.Query.filter(session_status == :interrupted)
+      
+      case Ash.read(query) do
+        {:ok, interrupted_sessions} ->
           
           recovery_count = Enum.reduce(interrupted_sessions, 0, fn session, acc ->
             case ErrorHandler.attempt_session_recovery(session.id) do
@@ -77,12 +78,34 @@ defmodule Sertantai.AI.Supervisor do
           
           {:ok, recovery_count}
         
+        {:error, %Ash.Error.Unknown{errors: errors}} = error ->
+          # Check if it's a table not found error
+          if Enum.any?(errors, fn 
+            %{error: error_string} when is_binary(error_string) -> 
+              error_string =~ "undefined_table" or error_string =~ "does not exist"
+            _ -> 
+              false
+          end) do
+            Logger.debug("AI conversation sessions table not yet created - skipping recovery")
+            {:ok, 0}
+          else
+            {:error, error}
+          end
+          
         {:error, reason} ->
           {:error, reason}
       end
     rescue
       exception ->
-        {:error, exception}
+        # Handle Postgrex errors for missing tables
+        case exception do
+          %Postgrex.Error{postgres: %{code: :undefined_table}} ->
+            Logger.debug("AI conversation sessions table not yet created - skipping recovery")
+            {:ok, 0}
+            
+          _ ->
+            {:error, exception}
+        end
     end
   end
 

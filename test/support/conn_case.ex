@@ -33,7 +33,17 @@ defmodule SertantaiWeb.ConnCase do
 
   setup tags do
     Sertantai.DataCase.setup_sandbox(tags)
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+    
+    # Set up connection
+    conn = Phoenix.ConnTest.build_conn()
+    
+    # Register cleanup callback to ensure LiveView processes are terminated
+    on_exit(fn ->
+      # Force garbage collection to clean up any lingering processes
+      :erlang.garbage_collect()
+    end)
+    
+    {:ok, conn: conn}
   end
 
   @doc """

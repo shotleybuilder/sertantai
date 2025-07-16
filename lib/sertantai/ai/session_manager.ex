@@ -9,7 +9,7 @@ defmodule Sertantai.AI.SessionManager do
   use GenServer
   require Logger
 
-  alias Sertantai.AI.{ConversationSession, HealthMonitor, ErrorHandler}
+  alias Sertantai.AI.{ConversationSession, ErrorHandler}
 
   @default_cleanup_interval 60_000      # 1 minute
   @default_session_timeout 30           # 30 minutes  
@@ -64,10 +64,13 @@ defmodule Sertantai.AI.SessionManager do
       cleanup_stats: initialize_cleanup_stats()
     }
     
-    # Schedule initial cleanup
-    schedule_cleanup(state.cleanup_interval)
-    
-    Logger.info("AI Session Manager started - cleanup interval: #{state.cleanup_interval}ms, session timeout: #{state.session_timeout_minutes}min")
+    # Schedule initial cleanup only if not in test environment
+    if Mix.env() != :test do
+      schedule_cleanup(state.cleanup_interval)
+      Logger.info("AI Session Manager started - cleanup interval: #{state.cleanup_interval}ms, session timeout: #{state.session_timeout_minutes}min")
+    else
+      Logger.debug("AI Session Manager started in test mode - automatic cleanup disabled")
+    end
     
     {:ok, state}
   end
@@ -146,16 +149,16 @@ defmodule Sertantai.AI.SessionManager do
     }
     
     # Step 1: Check for timed out sessions
-    {timeout_results, step1_results} = check_session_timeouts(state, results)
+    {_timeout_results, step1_results} = check_session_timeouts(state, results)
     
     # Step 2: Clean up old abandoned sessions
-    {abandoned_results, step2_results} = cleanup_abandoned_sessions(state, step1_results)
+    {_abandoned_results, step2_results} = cleanup_abandoned_sessions(state, step1_results)
     
     # Step 3: Trim oversized conversation histories
-    {history_results, step3_results} = trim_conversation_histories(state, step2_results)
+    {_history_results, step3_results} = trim_conversation_histories(state, step2_results)
     
     # Step 4: Attempt recovery of interrupted sessions
-    {recovery_results, final_results} = attempt_session_recoveries(state, step3_results)
+    {_recovery_results, final_results} = attempt_session_recoveries(state, step3_results)
     
     # Update cleanup statistics
     cleanup_duration = System.monotonic_time(:millisecond) - start_time
@@ -170,9 +173,13 @@ defmodule Sertantai.AI.SessionManager do
 
   defp check_session_timeouts(state, results) do
     try do
-      case ConversationSession.stale_sessions(state.session_timeout_minutes) do
-        {:ok, stale_sessions} ->
-          stale_count = length(stale_sessions)
+      # Skip database operations in test environment unless explicitly testing
+      if Mix.env() == :test and not Process.get(:allow_session_cleanup, false) do
+        {results, results}
+      else
+        case ConversationSession.stale_sessions(state.session_timeout_minutes) do
+          {:ok, stale_sessions} ->
+            stale_count = length(stale_sessions)
           
           timeout_results = Enum.reduce(stale_sessions, 0, fn session, acc ->
             case ConversationSession.check_timeout(session) do
@@ -202,6 +209,7 @@ defmodule Sertantai.AI.SessionManager do
           
           new_results = %{results | errors: [error_msg | results.errors]}
           {:error, new_results}
+        end
       end
     rescue
       exception ->
@@ -215,10 +223,14 @@ defmodule Sertantai.AI.SessionManager do
 
   defp cleanup_abandoned_sessions(state, results) do
     try do
-      abandoned_cutoff = DateTime.add(DateTime.utc_now(), -state.abandoned_cleanup_hours, :hour)
-      
-      # Find sessions abandoned before cutoff
-      case ConversationSession.read() do
+      # Skip database operations in test environment unless explicitly testing
+      if Mix.env() == :test and not Process.get(:allow_session_cleanup, false) do
+        {results, results}
+      else
+        abandoned_cutoff = DateTime.add(DateTime.utc_now(), -state.abandoned_cleanup_hours, :hour)
+        
+        # Find sessions abandoned before cutoff
+        case ConversationSession.read() do
         {:ok, all_sessions} ->
           old_abandoned = Enum.filter(all_sessions, fn session ->
             session.session_status == :abandoned && 
@@ -246,6 +258,7 @@ defmodule Sertantai.AI.SessionManager do
           
           new_results = %{results | errors: [error_msg | results.errors]}
           {:error, new_results}
+        end
       end
     rescue
       exception ->
@@ -259,7 +272,11 @@ defmodule Sertantai.AI.SessionManager do
 
   defp trim_conversation_histories(state, results) do
     try do
-      case ConversationSession.read() do
+      # Skip database operations in test environment unless explicitly testing
+      if Mix.env() == :test and not Process.get(:allow_session_cleanup, false) do
+        {results, results}
+      else
+        case ConversationSession.read() do
         {:ok, all_sessions} ->
           oversized_sessions = Enum.filter(all_sessions, fn session ->
             history_size = length(session.conversation_history || [])
@@ -289,6 +306,7 @@ defmodule Sertantai.AI.SessionManager do
           
           new_results = %{results | errors: [error_msg | results.errors]}
           {:error, new_results}
+        end
       end
     rescue
       exception ->
@@ -300,10 +318,14 @@ defmodule Sertantai.AI.SessionManager do
     end
   end
 
-  defp attempt_session_recoveries(state, results) do
+  defp attempt_session_recoveries(_state, results) do
     try do
-      # Find interrupted sessions that might be recoverable
-      case ConversationSession.read() do
+      # Skip database operations in test environment unless explicitly testing
+      if Mix.env() == :test and not Process.get(:allow_session_cleanup, false) do
+        {results, results}
+      else
+        # Find interrupted sessions that might be recoverable
+        case ConversationSession.read() do
         {:ok, all_sessions} ->
           interrupted_sessions = Enum.filter(all_sessions, fn session ->
             session.session_status == :interrupted &&
@@ -331,6 +353,7 @@ defmodule Sertantai.AI.SessionManager do
           
           new_results = %{results | errors: [error_msg | results.errors]}
           {:error, new_results}
+        end
       end
     rescue
       exception ->

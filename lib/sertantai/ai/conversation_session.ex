@@ -293,7 +293,7 @@ defmodule Sertantai.AI.ConversationSession do
 
   defp calculate_downtime_duration(interrupted_at_string) when is_binary(interrupted_at_string) do
     case DateTime.from_iso8601(interrupted_at_string) do
-      {:ok, interrupted_time, _} -> calculate_downtime_duration(interrupted_at_string)
+      {:ok, _interrupted_time, _} -> calculate_downtime_duration(interrupted_at_string)
       _ -> "unknown"
     end
   end

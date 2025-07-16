@@ -9,6 +9,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
   use SertantaiWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   import Sertantai.AccountsFixtures
+  import Sertantai.OrganizationsFixtures
   
   alias SertantaiWeb.Admin.Users.UserListLive
   alias Phoenix.LiveView.Socket
@@ -30,6 +31,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [],
           show_user_modal: false,
           editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 2,
           __changed__: %{},
           flash: %{},
           live_action: :index
@@ -62,6 +67,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [],
           show_user_modal: false,
           editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
           __changed__: %{},
           flash: %{},
           live_action: :index
@@ -93,6 +102,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [],
           show_user_modal: false,
           editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
           __changed__: %{},
           flash: %{},
           live_action: :index
@@ -122,6 +135,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [],
           show_user_modal: false,
           editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
           __changed__: %{},
           flash: %{},
           live_action: :index
@@ -152,6 +169,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [user1.id, user2.id],  # Users selected
           show_user_modal: false,
           editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
           __changed__: %{},
           flash: %{},
           live_action: :index
@@ -181,6 +202,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [],
           show_user_modal: true,
           editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
           __changed__: %{},
           flash: %{},
           live_action: :new
@@ -211,6 +236,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [],
           show_user_modal: true,
           editing_user: user_to_edit,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 1,
           __changed__: %{},
           flash: %{},
           live_action: :edit
@@ -239,6 +268,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
           selected_users: [],
           show_user_modal: false,
           editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
           __changed__: %{},
           flash: %{},
           live_action: :index
@@ -255,6 +288,412 @@ defmodule SertantaiWeb.Admin.Users.UserListLiveTest do
       
       # Should show sort indicator for email column
       assert html =~ "M5 15l7-7 7 7"  # Ascending arrow for email
+    end
+  end
+  
+  describe "organization display functionality" do
+    test "displays organization links for users with matching email domains" do
+      admin = user_fixture(%{role: :admin})
+      organization = organization_fixture(%{email_domain: "example.com", organization_name: "Example Corp", created_by_user_id: admin.id, actor: admin})
+      user_with_org = user_fixture(%{role: :member, email: "user@example.com"})
+      user_without_org = user_fixture(%{role: :member, email: "user@otherdomain.com"})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [user_with_org, user_without_org],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{"example.com" => organization},
+          page: 1,
+          per_page: 25,
+          total_count: 2,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show organization name as link for user with matching domain
+      assert html =~ "Example Corp"
+      assert html =~ "/admin/organizations/#{organization.id}/edit"
+      
+      # Should show "None" for user without organization
+      assert html =~ "None"
+    end
+    
+    test "organization sorting column is present" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "organization",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show organization column header with sort button
+      assert html =~ "Organization"
+      assert html =~ ~s(phx-value-field="organization")
+      assert html =~ "M5 15l7-7 7 7"  # Ascending arrow for organization
+    end
+    
+    test "mobile view shows organization info under user name" do
+      admin = user_fixture(%{role: :admin})
+      organization = organization_fixture(%{email_domain: "example.com", organization_name: "Example Corp", created_by_user_id: admin.id, actor: admin})
+      user_with_org = user_fixture(%{role: :member, email: "user@example.com", first_name: "John", last_name: "Doe"})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [user_with_org],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{"example.com" => organization},
+          page: 1,
+          per_page: 25,
+          total_count: 2,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show organization info in mobile view
+      assert html =~ "sm:hidden"
+      assert html =~ "Org: Example Corp"
+    end
+  end
+  
+  describe "pagination functionality" do
+    test "displays pagination controls with correct information" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 100,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show pagination info
+      assert html =~ "Showing 1-25 of 100 users"
+      assert html =~ "Show:"
+      assert html =~ ~s(value="25")
+      
+      # Should show page numbers
+      assert html =~ ~s(phx-click="page_change")
+      assert html =~ "Next"
+      
+      # Previous button should be disabled on first page
+      assert html =~ "cursor-not-allowed"
+    end
+    
+    test "shows correct pagination info for different pages" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 2,
+          per_page: 25,
+          total_count: 100,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show correct range for page 2
+      assert html =~ "Showing 26-50 of 100 users"
+      
+      # Both Previous and Next should be enabled
+      refute html =~ "cursor-not-allowed"
+      assert html =~ "Previous"
+      assert html =~ "Next"
+    end
+    
+    test "handles empty state correctly" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show no users found message
+      assert html =~ "No users found"
+    end
+  end
+  
+  describe "mobile responsive design" do
+    test "hides organization column on mobile" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Organization column should be hidden on mobile
+      assert html =~ "hidden sm:table-cell"
+      assert html =~ "Organization"
+    end
+    
+    test "hides created date column on mobile" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Created column should be hidden on mobile
+      assert html =~ "hidden md:table-cell"
+      assert html =~ "Created"
+    end
+    
+    test "mobile pagination shows simplified controls" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 2,
+          per_page: 25,
+          total_count: 100,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show mobile pagination controls
+      assert html =~ "sm:hidden"
+      assert html =~ "Previous"
+      assert html =~ "Next"
+      
+      # Should also show desktop pagination controls
+      assert html =~ "hidden sm:flex-1"
+    end
+    
+    test "search and filter controls stack on mobile" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],
+          search_term: "",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should use flex-col for mobile and flex-row for desktop
+      assert html =~ "flex flex-col space-y-4 sm:flex-row"
+      assert html =~ "w-full sm:w-auto"
+    end
+  end
+  
+  describe "server-side filtering and sorting" do
+    test "search functionality would use server-side filtering" do
+      # This test documents that the search functionality uses server-side filtering
+      # In the actual implementation, this would be tested with live view integration
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],  # Empty because search would be handled server-side
+          search_term: "john",
+          role_filter: "all",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show the search term in the input
+      assert html =~ ~s(value="john")
+      assert html =~ "Search users by email, name..."
+    end
+    
+    test "role filter would use server-side filtering" do
+      admin = user_fixture(%{role: :admin})
+      
+      socket = %Socket{
+        assigns: %{
+          current_user: admin,
+          users: [],  # Empty because filter would be handled server-side
+          search_term: "",
+          role_filter: "member",
+          sort_by: "email",
+          sort_order: "asc",
+          selected_users: [],
+          show_user_modal: false,
+          editing_user: nil,
+          organizations_by_domain: %{},
+          page: 1,
+          per_page: 25,
+          total_count: 0,
+          __changed__: %{},
+          flash: %{},
+          live_action: :index
+        }
+      }
+      
+      html = render_component(&UserListLive.render/1, socket.assigns)
+      
+      # Should show the selected role in the dropdown
+      assert html =~ ~s(value="member")
+      assert html =~ "All Roles"
     end
   end
 end

@@ -6,7 +6,6 @@ defmodule SertantaiWeb.Admin.Components.AdminTableTest do
   """
   
   use SertantaiWeb.ConnCase, async: true
-  import Phoenix.LiveViewTest
   
   alias SertantaiWeb.Admin.Components.AdminTable
 
@@ -23,7 +22,7 @@ defmodule SertantaiWeb.Admin.Components.AdminTableTest do
       # Test that role badge function exists and handles expected roles
       roles = [:admin, :support, :professional, :member, :guest]
       
-      Enum.each(roles, fn role ->
+      Enum.each(roles, fn _role ->
         # This should not raise an error if the function is properly defined
         assert is_function(&AdminTable.role_badge/1)
       end)

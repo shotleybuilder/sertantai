@@ -23,8 +23,15 @@ defmodule Sertantai.OrganizationsFixtures do
 
     merged_attrs = Map.merge(default_attrs, attrs)
 
+    # Extract actor from attrs and pass it separately
+    {actor, merged_attrs} = Map.pop(merged_attrs, :actor)
+
     {:ok, organization} = 
-      Ash.create(Organization, merged_attrs, domain: Sertantai.Organizations)
+      if actor do
+        Ash.create(Organization, merged_attrs, domain: Sertantai.Organizations, actor: actor)
+      else
+        Ash.create(Organization, merged_attrs, domain: Sertantai.Organizations)
+      end
 
     organization
   end

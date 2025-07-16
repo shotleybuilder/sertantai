@@ -9,7 +9,7 @@ defmodule Sertantai.AI.HealthMonitor do
   use GenServer
   require Logger
 
-  alias Sertantai.AI.{ConversationSession, ErrorHandler}
+  alias Sertantai.AI.ConversationSession
 
   @default_check_interval 30_000  # 30 seconds
   @default_session_timeout 30     # 30 minutes
@@ -263,14 +263,6 @@ defmodule Sertantai.AI.HealthMonitor do
             error: "Unexpected health check response: #{inspect(other)}"
           }
       end
-    catch
-      :exit, {:timeout, _} ->
-        %{
-          status: :timeout,
-          response_time: config.timeout,
-          checked_at: DateTime.utc_now(),
-          error: "Health check timed out after #{config.timeout}ms"
-        }
     rescue
       exception ->
         %{
@@ -278,6 +270,14 @@ defmodule Sertantai.AI.HealthMonitor do
           response_time: System.monotonic_time(:millisecond) - start_time,
           checked_at: DateTime.utc_now(),
           error: "Health check exception: #{inspect(exception)}"
+        }
+    catch
+      :exit, {:timeout, _} ->
+        %{
+          status: :timeout,
+          response_time: config.timeout,
+          checked_at: DateTime.utc_now(),
+          error: "Health check timed out after #{config.timeout}ms"
         }
     end
     

@@ -27,7 +27,7 @@ Add this function to your shell for one-command startup:
 ```bash
 echo 'sertantai-dev() {
     cd /home/jason/Desktop/sertantai
-    
+
     # Check if PostgreSQL container is running
     if ! docker ps --format "table {{.Names}}" | grep -q "sertantai_postgres"; then
         echo "🐳 Starting PostgreSQL container..."
@@ -37,7 +37,7 @@ echo 'sertantai-dev() {
     else
         echo "✅ PostgreSQL container already running"
     fi
-    
+
     # Load environment and start Phoenix
     echo "🚀 Starting Sertantai development server..."
     source .env.local && mix phx.server
@@ -57,6 +57,12 @@ sertantai-dev
 docker-compose up -d postgres  # Start PostgreSQL
 source .env.local              # Load local environment
 mix phx.server                # Start Phoenix server
+```
+
+or
+
+```bash
+export USE_LOCAL_DB=true && source .env.local && mix phx.server
 ```
 
 ### Database Configuration

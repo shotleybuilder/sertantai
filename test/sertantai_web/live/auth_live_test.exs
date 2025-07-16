@@ -1,5 +1,5 @@
 defmodule SertantaiWeb.AuthLiveTest do
-  use SertantaiWeb.ConnCase, async: true
+  use SertantaiWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
 
   alias Sertantai.Accounts.User

@@ -6,7 +6,6 @@ defmodule SertantaiWeb.Admin.Components.AdminModalTest do
   """
   
   use SertantaiWeb.ConnCase, async: true
-  import Phoenix.LiveViewTest
   
   alias SertantaiWeb.Admin.Components.AdminModal
 

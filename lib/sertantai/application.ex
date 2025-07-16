@@ -35,7 +35,10 @@ defmodule Sertantai.Application do
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
         # Start AI session recovery process after supervisor is ready
-        Sertantai.AI.Supervisor.start_recovery_process()
+        # Skip in test environment to avoid database ownership issues
+        unless Mix.env() == :test do
+          Sertantai.AI.Supervisor.start_recovery_process()
+        end
         {:ok, pid}
       
       error ->

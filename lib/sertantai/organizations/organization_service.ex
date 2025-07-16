@@ -4,7 +4,7 @@ defmodule Sertantai.Organizations.OrganizationService do
   Handles organization creation, user associations, and basic screening workflows.
   """
   
-  alias Sertantai.Organizations.{Organization, OrganizationUser, OrganizationLocation, ApplicabilityMatcher}
+  alias Sertantai.Organizations.{Organization, OrganizationUser, ApplicabilityMatcher}
   alias Sertantai.Organizations.SingleLocationAdapter
   require Ash.Query
   import Ash.Expr
@@ -63,7 +63,7 @@ defmodule Sertantai.Organizations.OrganizationService do
   Creates a primary location for a new organization based on the organization attributes.
   This ensures every organization has at least one location for multi-location compatibility.
   """
-  def create_primary_location(organization, org_attrs) do
+  def create_primary_location(organization, _org_attrs) do
     SingleLocationAdapter.create_primary_location_from_profile(organization)
   end
 

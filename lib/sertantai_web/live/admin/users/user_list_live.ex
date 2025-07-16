@@ -12,6 +12,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
   use SertantaiWeb, :live_view
   
   alias Sertantai.Accounts.User
+  alias Sertantai.Organizations.Organization
+  
+  require Ash.Query
+  import Ash.Expr
   
   @impl true
   def mount(_params, _session, socket) do
@@ -28,6 +32,10 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
          |> assign(:selected_users, [])
          |> assign(:show_user_modal, false)
          |> assign(:editing_user, nil)
+         |> assign(:page, 1)
+         |> assign(:per_page, 25)
+         |> assign(:total_count, 0)
+         |> load_organizations_by_domain()
          |> load_users()}
       
       _ ->
@@ -76,6 +84,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
     {:noreply, 
      socket
      |> assign(:search_term, search_term)
+     |> assign(:page, 1)  # Reset to first page on search
      |> load_users()}
   end
   
@@ -83,6 +92,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
     {:noreply, 
      socket
      |> assign(:role_filter, role)
+     |> assign(:page, 1)  # Reset to first page on filter change
      |> load_users()}
   end
   
@@ -119,6 +129,23 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
   
   def handle_event("deselect_all", _params, socket) do
     {:noreply, assign(socket, :selected_users, [])}
+  end
+  
+  def handle_event("page_change", %{"page" => page}, socket) do
+    page = String.to_integer(page)
+    {:noreply, 
+     socket
+     |> assign(:page, page)
+     |> load_users()}
+  end
+  
+  def handle_event("per_page_change", %{"per_page" => per_page}, socket) do
+    per_page = String.to_integer(per_page)
+    {:noreply, 
+     socket
+     |> assign(:per_page, per_page)
+     |> assign(:page, 1)  # Reset to first page when changing page size
+     |> load_users()}
   end
   
   def handle_event("close_modal", _params, socket) do
@@ -237,63 +264,150 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
   end
   
   defp load_users(socket) do
-    # Load users with pagination
-    case Ash.read(User, actor: socket.assigns.current_user) do
+    # Build query with filters, sorting, and pagination
+    query = build_user_query(socket.assigns)
+    
+    # Load users with the query
+    case Ash.read(query, actor: socket.assigns.current_user, domain: Sertantai.Accounts) do
       {:ok, users} ->
-        # Apply filters in memory for now (can be optimized later)
-        filtered_users = apply_filters(users, socket.assigns)
-        assign(socket, :users, filtered_users)
+        # Get total count for pagination
+        total_count = get_total_count(socket.assigns)
+        
+        socket
+        |> assign(:users, users)
+        |> assign(:total_count, total_count)
       
       {:error, _error} ->
         socket
         |> put_flash(:error, "Failed to load users")
         |> assign(:users, [])
+        |> assign(:total_count, 0)
     end
   end
   
-  defp apply_filters(users, assigns) do
-    users
-    |> filter_by_search(assigns.search_term)
-    |> filter_by_role(assigns.role_filter)
-    |> sort_users(assigns.sort_by, assigns.sort_order)
+  defp build_user_query(assigns) do
+    User
+    |> apply_search_filter(assigns.search_term)
+    |> apply_role_filter(assigns.role_filter)
+    |> apply_sorting(assigns.sort_by, assigns.sort_order)
+    |> apply_pagination(assigns.page, assigns.per_page)
   end
   
-  defp filter_by_search(users, ""), do: users
-  defp filter_by_search(users, search_term) do
-    search_term = String.downcase(search_term)
+  defp apply_search_filter(query, ""), do: query
+  defp apply_search_filter(query, search_term) do
+    search_term_lower = String.downcase(search_term)
     
-    Enum.filter(users, fn user ->
-      email_match = String.downcase(user.email || "") |> String.contains?(search_term)
-      first_name_match = String.downcase(user.first_name || "") |> String.contains?(search_term)
-      last_name_match = String.downcase(user.last_name || "") |> String.contains?(search_term)
-      
-      email_match || first_name_match || last_name_match
-    end)
+    Ash.Query.filter(query, 
+      expr(contains(email, ^search_term_lower) or 
+           contains(first_name, ^search_term_lower) or 
+           contains(last_name, ^search_term_lower))
+    )
   end
   
-  defp filter_by_role(users, "all"), do: users
-  defp filter_by_role(users, role) do
+  defp apply_role_filter(query, "all"), do: query
+  defp apply_role_filter(query, role) do
     role_atom = String.to_existing_atom(role)
-    Enum.filter(users, fn user -> user.role == role_atom end)
+    Ash.Query.filter(query, expr(role == ^role_atom))
   end
   
-  defp sort_users(users, sort_by, sort_order) do
+  defp apply_sorting(query, sort_by, sort_order) do
     sort_field = String.to_existing_atom(sort_by)
+    sort_direction = if sort_order == "desc", do: :desc, else: :asc
     
-    sorted = Enum.sort_by(users, fn user ->
-      case sort_field do
-        :email -> user.email || ""
-        :first_name -> user.first_name || ""
-        :last_name -> user.last_name || ""
-        :role -> to_string(user.role)
-        :inserted_at -> user.inserted_at
-        _ -> ""
-      end
-    end)
+    # Note: Organization sorting needs to be handled separately since it's a derived field
+    case sort_field do
+      :organization ->
+        # For now, we'll sort by email domain as a proxy for organization
+        Ash.Query.sort(query, email: sort_direction)
+      _ ->
+        Ash.Query.sort(query, [{sort_field, sort_direction}])
+    end
+  end
+  
+  defp apply_pagination(query, page, per_page) do
+    offset = (page - 1) * per_page
     
-    case sort_order do
-      "desc" -> Enum.reverse(sorted)
-      _ -> sorted
+    query
+    |> Ash.Query.limit(per_page)
+    |> Ash.Query.offset(offset)
+  end
+  
+  defp get_total_count(assigns) do
+    # Build query without pagination to get total count
+    query = User
+    |> apply_search_filter(assigns.search_term)
+    |> apply_role_filter(assigns.role_filter)
+    
+    case Ash.count(query, actor: assigns.current_user, domain: Sertantai.Accounts) do
+      {:ok, count} -> count
+      {:error, _} -> 0
+    end
+  end
+  
+  
+  # Organization-related helper functions
+  defp load_organizations_by_domain(socket) do
+    # Load all organizations and create domain lookup map
+    case Ash.read(Organization, actor: socket.assigns.current_user, domain: Sertantai.Organizations) do
+      {:ok, organizations} ->
+        organizations_by_domain = 
+          organizations
+          |> Enum.map(fn org -> {org.email_domain, org} end)
+          |> Map.new()
+        
+        assign(socket, :organizations_by_domain, organizations_by_domain)
+      
+      {:error, _} ->
+        assign(socket, :organizations_by_domain, %{})
+    end
+  end
+  
+  defp get_user_organization(user, organizations_by_domain) do
+    case user.email do
+      nil -> nil
+      email ->
+        email_string = to_string(email)
+        domain = email_string |> String.split("@") |> List.last()
+        Map.get(organizations_by_domain, domain)
+    end
+  end
+  
+  defp render_user_organization(assigns, user) do
+    case get_user_organization(user, assigns.organizations_by_domain) do
+      nil -> 
+        assigns = assign(assigns, :org_text, "None")
+        ~H"""
+        <span class="text-gray-400"><%= @org_text %></span>
+        """
+      org -> 
+        assigns = assign(assigns, :org, org)
+        ~H"""
+        <.link
+          navigate={~p"/admin/organizations/#{@org.id}/edit"}
+          class="text-blue-600 hover:text-blue-800"
+        >
+          <%= @org.organization_name %>
+        </.link>
+        """
+    end
+  end
+  
+  defp pagination_info(assigns) do
+    start_item = (assigns.page - 1) * assigns.per_page + 1
+    end_item = min(assigns.page * assigns.per_page, assigns.total_count)
+    
+    if assigns.total_count == 0 do
+      "No users found"
+    else
+      "Showing #{start_item}-#{end_item} of #{assigns.total_count} users"
+    end
+  end
+  
+  defp total_pages(assigns) do
+    if assigns.total_count == 0 do
+      1
+    else
+      ceil(assigns.total_count / assigns.per_page)
     end
   end
   
@@ -328,7 +442,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
         
         <!-- Search and Filter Controls -->
         <div class="px-6 py-4 bg-gray-50">
-          <div class="flex flex-wrap items-center space-x-4">
+          <div class="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
             <!-- Search -->
             <div class="flex-1 min-w-0">
               <form phx-submit="search">
@@ -350,7 +464,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
             </div>
             
             <!-- Role Filter -->
-            <div>
+            <div class="w-full sm:w-auto">
               <select
                 phx-change="filter_by_role"
                 name="role"
@@ -466,6 +580,25 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                 </button>
               </th>
               
+              <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button
+                  phx-click="sort"
+                  phx-value-field="organization"
+                  class="group inline-flex items-center hover:text-gray-900"
+                >
+                  Organization
+                  <%= if @sort_by == "organization" do %>
+                    <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <%= if @sort_order == "asc" do %>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      <% else %>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      <% end %>
+                    </svg>
+                  <% end %>
+                </button>
+              </th>
+              
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <button
                   phx-click="sort"
@@ -485,7 +618,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                 </button>
               </th>
               
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <button
                   phx-click="sort"
                   phx-value-field="inserted_at"
@@ -537,6 +670,19 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                       <span class="text-gray-400">No name</span>
                     <% end %>
                   </div>
+                  <!-- Mobile-only organization info -->
+                  <div class="sm:hidden text-xs text-gray-500 mt-1">
+                    <%= case get_user_organization(user, assigns.organizations_by_domain) do %>
+                      <% nil -> %>
+                        <span>No organization</span>
+                      <% org -> %>
+                        <span>Org: <%= org.organization_name %></span>
+                    <% end %>
+                  </div>
+                </td>
+                
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= render_user_organization(assigns, user) %>
                 </td>
                 
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -554,7 +700,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
                   </span>
                 </td>
                 
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <%= Calendar.strftime(user.inserted_at, "%Y-%m-%d") %>
                 </td>
                 
@@ -584,13 +730,140 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
             
             <%= if @users == [] do %>
               <tr>
-                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                <td class="px-6 py-4 text-center text-gray-500 md:hidden" colspan="5">
+                  No users found matching your criteria.
+                </td>
+                <td class="hidden md:table-cell px-6 py-4 text-center text-gray-500 sm:hidden" colspan="6">
+                  No users found matching your criteria.
+                </td>
+                <td class="hidden sm:table-cell px-6 py-4 text-center text-gray-500" colspan="7">
                   No users found matching your criteria.
                 </td>
               </tr>
             <% end %>
           </tbody>
         </table>
+      </div>
+      
+      <!-- Pagination Controls -->
+      <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-6">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <!-- Mobile pagination controls -->
+          <%= if @page > 1 do %>
+            <button
+              phx-click="page_change"
+              phx-value-page={@page - 1}
+              class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Previous
+            </button>
+          <% else %>
+            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-gray-50 cursor-not-allowed">
+              Previous
+            </span>
+          <% end %>
+          
+          <%= if @page < total_pages(assigns) do %>
+            <button
+              phx-click="page_change"
+              phx-value-page={@page + 1}
+              class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Next
+            </button>
+          <% else %>
+            <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-gray-50 cursor-not-allowed">
+              Next
+            </span>
+          <% end %>
+        </div>
+        
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div class="flex items-center space-x-4">
+            <p class="text-sm text-gray-700">
+              <%= pagination_info(assigns) %>
+            </p>
+            
+            <!-- Page size selector -->
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-700">Show:</label>
+              <select
+                phx-change="per_page_change"
+                name="per_page"
+                value={@per_page}
+                class="text-sm border-gray-300 rounded-md"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <!-- Previous button -->
+              <%= if @page > 1 do %>
+                <button
+                  phx-click="page_change"
+                  phx-value-page={@page - 1}
+                  class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                >
+                  <span class="sr-only">Previous</span>
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              <% else %>
+                <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-300 cursor-not-allowed">
+                  <span class="sr-only">Previous</span>
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </span>
+              <% end %>
+              
+              <!-- Page numbers -->
+              <%= for page_num <- max(1, @page - 2)..min(total_pages(assigns), @page + 2) do %>
+                <%= if page_num == @page do %>
+                  <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                    <%= page_num %>
+                  </span>
+                <% else %>
+                  <button
+                    phx-click="page_change"
+                    phx-value-page={page_num}
+                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <%= page_num %>
+                  </button>
+                <% end %>
+              <% end %>
+              
+              <!-- Next button -->
+              <%= if @page < total_pages(assigns) do %>
+                <button
+                  phx-click="page_change"
+                  phx-value-page={@page + 1}
+                  class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                >
+                  <span class="sr-only">Next</span>
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              <% else %>
+                <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-300 cursor-not-allowed">
+                  <span class="sr-only">Next</span>
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              <% end %>
+            </nav>
+          </div>
+        </div>
       </div>
       
       <!-- User Modal -->

@@ -91,12 +91,12 @@ defmodule SertantaiWeb.Admin.Organizations.LocationsSearchLive do
     query = Organization
       |> Ash.Query.sort(updated_at: :desc)
       |> Ash.Query.limit(5)
-      |> Ash.Query.load([:organization_locations])
+      |> Ash.Query.load([:locations])
     
     case Ash.read(query, actor: socket.assigns.current_user) do
       {:ok, organizations} ->
         recent_with_counts = Enum.map(organizations, fn org ->
-          location_count = length(org.organization_locations || [])
+          location_count = length(org.locations || [])
           Map.put(org, :location_count, location_count)
         end)
         
@@ -114,12 +114,12 @@ defmodule SertantaiWeb.Admin.Organizations.LocationsSearchLive do
     query = Organization
       |> apply_organization_search_filter(search_term)
       |> Ash.Query.limit(10)
-      |> Ash.Query.load([:organization_locations])
+      |> Ash.Query.load([:locations])
     
     case Ash.read(query, actor: socket.assigns.current_user) do
       {:ok, organizations} ->
         organizations_with_counts = Enum.map(organizations, fn org ->
-          location_count = length(org.organization_locations || [])
+          location_count = length(org.locations || [])
           Map.put(org, :location_count, location_count)
         end)
         

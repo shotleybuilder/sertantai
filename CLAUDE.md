@@ -120,6 +120,12 @@ mix ecto.setup              # Create, migrate, and seed database
 **Never let the app run ahead of the database schema!**
 
 ### Testing
+**🚨 CRITICAL RULE: NO BUILD IS COMPLETE UNTIL ALL TESTS PASS**
+- **A feature implementation is NOT finished until all related tests are passing**
+- **Never consider a task complete if there are failing tests in the affected area**
+- **All test failures must be investigated and fixed, not dismissed as "non-critical"**
+- **If tests are failing, the code is not ready for production**
+
 **⚠️ TERMINAL CRASH ISSUE**: Direct test execution causes terminal crashes. Use manual Tidewave MCP approach instead.
 
 **MANUAL TESTING APPROACH (Recommended):**

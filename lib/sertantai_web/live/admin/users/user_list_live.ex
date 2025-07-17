@@ -25,6 +25,7 @@ defmodule SertantaiWeb.Admin.Users.UserListLive do
         {:ok, 
          socket
          |> assign(:page_title, "User Management")
+         |> assign(:current_path, "/admin/users")
          |> assign(:search_term, "")
          |> assign(:role_filter, "all")
          |> assign(:sort_by, "email")

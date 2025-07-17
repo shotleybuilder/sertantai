@@ -20,6 +20,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
         {:ok, 
          socket
          |> assign(:page_title, "Admin Dashboard")
+         |> assign(:current_path, "/admin")
          |> load_dashboard_stats()}
       
       %User{role: _role} ->
@@ -285,7 +286,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
         
         <!-- Main Content Area -->
         <main class="flex-1 p-4 lg:p-6 overflow-x-hidden">
-          <div class="max-w-full">
+          <div class="w-full">
             <!-- Dashboard Content -->
             <div class="bg-white shadow rounded-lg p-4 lg:p-6">
               <h2 class="text-lg font-medium text-gray-900 mb-6">
@@ -293,7 +294,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
               </h2>
               
               <!-- Quick Stats -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-8">
                 <div class="bg-blue-50 rounded-lg p-4 sm:p-6">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1 min-w-0">
@@ -415,7 +416,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
               
               <!-- Location Insights Section -->
               <%= if @location_stats.total > 0 do %>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6 mt-8">
                   <!-- Location Summary -->
                   <div class="bg-white border border-gray-200 rounded-lg p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Location Overview</h3>

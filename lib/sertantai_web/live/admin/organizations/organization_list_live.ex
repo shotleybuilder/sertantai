@@ -15,6 +15,7 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   def mount(_params, _session, socket) do
     socket =
       socket
+      |> assign(:current_path, "/admin/organizations")
       |> assign(:search_term, "")
       |> assign(:status_filter, "all")
       |> assign(:verification_filter, "all")
@@ -365,7 +366,7 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="space-y-6">
+    <div class="max-w-7xl mx-auto">
       <!-- Breadcrumb Navigation -->
       <nav class="mb-4" aria-label="Breadcrumb">
         <ol class="flex items-center space-x-2 text-sm text-gray-500">
@@ -394,113 +395,120 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
       </nav>
       
       <!-- Header -->
-      <div class="sm:flex sm:items-center">
-        <div class="sm:flex-auto">
-          <h1 class="text-2xl font-semibold text-gray-900">Organization Management</h1>
-          <p class="mt-2 text-sm text-gray-700">
-            Manage organizations, their verification status, and profile information.
-          </p>
+      <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900">Organization Management</h1>
+              <p class="text-sm text-gray-600 mt-1">
+                Manage organizations, their verification status, and profile information.
+              </p>
+            </div>
+            <%= if @current_user.role == :admin do %>
+              <div class="flex-shrink-0">
+                <.link
+                  patch={~p"/admin/organizations/new"}
+                  class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  New Organization
+                </.link>
+              </div>
+            <% end %>
+          </div>
         </div>
-        <%= if @current_user.role == :admin do %>
-          <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-            <.link
-              patch={~p"/admin/organizations/new"}
-              class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-            >
-              New Organization
-            </.link>
+
+        <!-- Search and Filter Controls -->
+        <div class="px-6 py-4 bg-gray-50">
+          <div class="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+            <!-- Search -->
+            <div class="flex-1 min-w-0">
+              <form phx-submit="search">
+                <div class="relative">
+                  <input
+                    type="text"
+                    name="search"
+                    value={@search_term}
+                    placeholder="Search by name, domain, or industry..."
+                    class="block w-full rounded-md border-gray-300 pl-10 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    phx-change="search"
+                  />
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- Verification Filter -->
+            <div class="flex-shrink-0">
+              <select
+                phx-change="filter_verification"
+                name="verification"
+                value={@verification_filter}
+                class="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+              >
+                <option value="all">All Organizations</option>
+                <option value="verified">Verified Only</option>
+                <option value="unverified">Unverified Only</option>
+              </select>
+            </div>
+
+            <!-- Results Info -->
+            <div class="flex-shrink-0 text-sm text-gray-500">
+              <%= @total_count %> organization(s) total
+              <%= if length(@selected_organizations) > 0 do %>
+                · <span class="font-medium text-blue-600"><%= length(@selected_organizations) %> selected</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <%= if length(@selected_organizations) > 0 do %>
+          <div class="px-6 py-3 bg-blue-50 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-blue-800">
+                <%= length(@selected_organizations) %> organization(s) selected
+              </span>
+              <div class="flex space-x-2">
+                <button
+                  phx-click="bulk_verify"
+                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                  Verify Selected
+                </button>
+                <%= if @current_user.role == :admin do %>
+                  <button
+                    phx-click="bulk_delete"
+                    data-confirm="Are you sure you want to delete the selected organizations?"
+                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    Delete Selected
+                  </button>
+                <% end %>
+                <button
+                  phx-click="clear_selection"
+                  class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
           </div>
         <% end %>
       </div>
 
-      <!-- Search and Filters -->
-      <div class="bg-white p-4 rounded-lg shadow space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Search -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-            <input
-              type="text"
-              value={@search_term}
-              phx-change="search"
-              name="search"
-              placeholder="Search by name, domain, or industry..."
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-
-          <!-- Verification Filter -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
-            <select
-              phx-change="filter_verification"
-              name="verification"
-              value={@verification_filter}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              <option value="all">All Organizations</option>
-              <option value="verified">Verified Only</option>
-              <option value="unverified">Unverified Only</option>
-            </select>
-          </div>
-
-          <!-- Results Info -->
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-500">
-              <%= @total_count %> organization(s) total
-            </span>
-            <%= if length(@selected_organizations) > 0 do %>
-              <span class="text-sm font-medium text-blue-600">
-                <%= length(@selected_organizations) %> selected
-              </span>
-            <% end %>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bulk Actions -->
-      <%= if length(@selected_organizations) > 0 do %>
-        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-blue-800">
-              <%= length(@selected_organizations) %> organization(s) selected
-            </span>
-            <div class="flex space-x-2">
-              <button
-                phx-click="bulk_verify"
-                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                Verify Selected
-              </button>
-              <%= if @current_user.role == :admin do %>
-                <button
-                  phx-click="bulk_delete"
-                  data-confirm="Are you sure you want to delete the selected organizations?"
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  Delete Selected
-                </button>
-              <% end %>
-              <button
-                phx-click="clear_selection"
-                class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Clear Selection
-              </button>
-            </div>
-          </div>
-        </div>
-      <% end %>
-
-      <!-- Mobile scroll notice -->
-      <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 md:hidden mb-4">
-        <p class="text-sm text-blue-800">
-          💡 Swipe horizontally to see all columns
-        </p>
-      </div>
-
       <!-- Organizations Table -->
-      <div class="bg-white shadow rounded-lg overflow-hidden">
+      <div class="bg-white shadow overflow-hidden rounded-lg">
+        <!-- Mobile scroll notice -->
+        <div class="px-6 py-3 bg-blue-50 border-b border-gray-200 md:hidden">
+          <p class="text-sm text-blue-800">
+            💡 Swipe horizontally to see all columns
+          </p>
+        </div>
+
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200" style="min-width: 1200px;">
           <thead class="bg-gray-50">
@@ -733,12 +741,11 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
           </div>
         <% end %>
         </div>
-      </div>
-      
-      <!-- Pagination Controls -->
-      <%= if @total_count > 0 do %>
-        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div class="flex-1 flex justify-between sm:hidden">
+        
+        <!-- Pagination Controls -->
+        <%= if @total_count > 0 do %>
+          <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
             <!-- Mobile pagination -->
             <button
               phx-click="page_change"
@@ -821,8 +828,9 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               </nav>
             </div>
           </div>
-        </div>
-      <% end %>
+          </div>
+        <% end %>
+      </div>
     </div>
 
     <!-- Organization Form Modal -->

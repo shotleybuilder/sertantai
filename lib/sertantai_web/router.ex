@@ -195,13 +195,15 @@ defmodule SertantaiWeb.Router do
       live "/users/:id/edit", Users.UserListLive, :edit
       live "/users/:id", Users.UserDetailLive, :show
       
-      # Organization Management Routes
+      # Organization Management Routes (specific routes MUST come before parameterized routes)
       live "/organizations", Organizations.OrganizationListLive, :index
       live "/organizations/new", Organizations.OrganizationListLive, :new
+      live "/organizations/locations", Organizations.LocationsSearchLive, :index
       live "/organizations/:id/edit", Organizations.OrganizationListLive, :edit
       live "/organizations/:id", Organizations.OrganizationDetailLive, :show
-      live "/organizations/:id/locations/new", Organizations.OrganizationDetailLive, :new_location
-      live "/organizations/:id/locations/:location_id/edit", Organizations.OrganizationDetailLive, :edit_location
+      live "/organizations/:id/locations", Organizations.OrganizationLocationsLive, :index
+      live "/organizations/:id/locations/new", Organizations.OrganizationLocationsLive, :new
+      live "/organizations/:id/locations/:location_id/edit", Organizations.OrganizationLocationsLive, :edit
       
       # Sync Configuration Management Routes
       live "/sync", Sync.SyncListLive, :index

@@ -1,33 +1,37 @@
-defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
+defmodule SertantaiWeb.Admin.Organizations.OrganizationLocationsLive do
   @moduledoc """
-  Organization management interface for admin users.
+  Admin interface for managing locations within a specific organization.
   
-  Provides comprehensive organization CRUD operations with search,
-  filtering, and bulk management capabilities.
+  Provides comprehensive location CRUD operations with context-aware
+  navigation and proper admin authorization.
   """
   
   use SertantaiWeb, :live_view
   
-  alias Sertantai.Organizations.Organization
-  alias SertantaiWeb.Admin.Organizations.OrganizationFormComponent
+  alias Sertantai.Organizations.{Organization, OrganizationLocation}
+  alias SertantaiWeb.Admin.Organizations.LocationFormComponent
   
   @impl true
-  def mount(_params, _session, socket) do
-    socket =
+  def mount(%{"id" => organization_id}, _session, socket) do
+    socket = 
       socket
+      |> assign(:organization_id, organization_id)
       |> assign(:search_term, "")
-      |> assign(:status_filter, "all")
-      |> assign(:verification_filter, "all")
-      |> assign(:sort_by, "organization_name")
+      |> assign(:sort_by, "location_name")
       |> assign(:sort_order, "asc")
-      |> assign(:selected_organizations, [])
-      |> assign(:show_organization_modal, false)
-      |> assign(:editing_organization, nil)
+      |> assign(:selected_locations, [])
+      |> assign(:show_location_modal, false)
+      |> assign(:editing_location, nil)
       |> assign(:page, 1)
       |> assign(:per_page, 25)
       |> assign(:total_count, 0)
     
-    {:ok, load_organizations(socket)}
+    case load_organization_and_locations(socket) do
+      {:ok, socket} ->
+        {:ok, socket}
+      {:error, socket} ->
+        {:ok, socket}
+    end
   end
   
   @impl true
@@ -41,29 +45,29 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
   
   defp apply_action(socket, :new, _params) do
     socket
-    |> assign(:show_organization_modal, true)
-    |> assign(:editing_organization, nil)
+    |> assign(:show_location_modal, true)
+    |> assign(:editing_location, nil)
   end
   
-  defp apply_action(socket, :edit, %{"id" => id}) do
-    case Ash.get(Organization, id, actor: socket.assigns.current_user) do
-      {:ok, organization} ->
+  defp apply_action(socket, :edit, %{"location_id" => location_id}) do
+    case Ash.get(OrganizationLocation, location_id, actor: socket.assigns.current_user) do
+      {:ok, location} ->
         socket
-        |> assign(:show_organization_modal, true)
-        |> assign(:editing_organization, organization)
+        |> assign(:show_location_modal, true)
+        |> assign(:editing_location, location)
       
       {:error, _error} ->
         socket
-        |> put_flash(:error, "Organization not found")
-        |> assign(:show_organization_modal, false)
-        |> assign(:editing_organization, nil)
+        |> put_flash(:error, "Location not found")
+        |> assign(:show_location_modal, false)
+        |> assign(:editing_location, nil)
     end
   end
   
   defp apply_action(socket, :index, _params) do
     socket
-    |> assign(:show_organization_modal, false)
-    |> assign(:editing_organization, nil)
+    |> assign(:show_location_modal, false)
+    |> assign(:editing_location, nil)
   end
   
   @impl true
@@ -72,26 +76,8 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
      socket
      |> assign(:search_term, search_term)
      |> assign(:page, 1)
-     |> assign(:selected_organizations, [])
-     |> load_organizations()}
-  end
-  
-  def handle_event("filter_status", %{"status" => status}, socket) do
-    {:noreply,
-     socket
-     |> assign(:status_filter, status)
-     |> assign(:page, 1)
-     |> assign(:selected_organizations, [])
-     |> load_organizations()}
-  end
-  
-  def handle_event("filter_verification", %{"verification" => verification}, socket) do
-    {:noreply,
-     socket
-     |> assign(:verification_filter, verification)
-     |> assign(:page, 1)
-     |> assign(:selected_organizations, [])
-     |> load_organizations()}
+     |> assign(:selected_locations, [])
+     |> load_locations()}
   end
   
   def handle_event("sort", %{"field" => field}, socket) do
@@ -107,11 +93,11 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
      |> assign(:sort_by, sort_by)
      |> assign(:sort_order, sort_order)
      |> assign(:page, 1)
-     |> load_organizations()}
+     |> load_locations()}
   end
   
-  def handle_event("select_organization", %{"id" => id}, socket) do
-    selected = socket.assigns.selected_organizations
+  def handle_event("select_location", %{"id" => id}, socket) do
+    selected = socket.assigns.selected_locations
     new_selected = 
       if id in selected do
         List.delete(selected, id)
@@ -119,157 +105,142 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
         [id | selected]
       end
     
-    {:noreply, assign(socket, :selected_organizations, new_selected)}
+    {:noreply, assign(socket, :selected_locations, new_selected)}
   end
   
   def handle_event("select_all", _params, socket) do
-    all_ids = Enum.map(socket.assigns.organizations, & &1.id)
-    {:noreply, assign(socket, :selected_organizations, all_ids)}
+    all_ids = Enum.map(socket.assigns.locations, & &1.id)
+    {:noreply, assign(socket, :selected_locations, all_ids)}
   end
   
   def handle_event("clear_selection", _params, socket) do
-    {:noreply, assign(socket, :selected_organizations, [])}
+    {:noreply, assign(socket, :selected_locations, [])}
   end
   
   def handle_event("page_change", %{"page" => page}, socket) do
     page = String.to_integer(page)
-    {:noreply, socket |> assign(:page, page) |> load_organizations()}
+    {:noreply, socket |> assign(:page, page) |> load_locations()}
   end
   
   def handle_event("per_page_change", %{"per_page" => per_page}, socket) do
     per_page = String.to_integer(per_page)
-    {:noreply, socket |> assign(:per_page, per_page) |> assign(:page, 1) |> load_organizations()}
+    {:noreply, socket |> assign(:per_page, per_page) |> assign(:page, 1) |> load_locations()}
   end
   
-  def handle_event("bulk_verify", _params, socket) do
-    socket.assigns.selected_organizations
-    |> Enum.each(fn id ->
-      case Ash.get(Organization, id, actor: socket.assigns.current_user) do
-        {:ok, organization} ->
-          Ash.update(organization, %{verified: true}, actor: socket.assigns.current_user)
-        {:error, _error} ->
-          :ok
-      end
-    end)
-    
-    # Reload organizations
-    {:noreply,
-     socket
-     |> assign(:selected_organizations, [])
-     |> put_flash(:info, "Organizations verified successfully")
-     |> load_organizations()}
-  end
-  
-  def handle_event("bulk_delete", _params, socket) do
+  def handle_event("delete_location", %{"id" => id}, socket) do
     if socket.assigns.current_user.role == :admin do
-      socket.assigns.selected_organizations
-      |> Enum.each(fn id ->
-        case Ash.get(Organization, id, actor: socket.assigns.current_user) do
-          {:ok, organization} ->
-            Ash.destroy(organization, actor: socket.assigns.current_user)
-          {:error, _error} ->
-            :ok
-        end
-      end)
-      
-      # Reload organizations
-      {:noreply,
-       socket
-       |> assign(:selected_organizations, [])
-       |> put_flash(:info, "Organizations deleted successfully")
-       |> load_organizations()}
-    else
-      {:noreply, put_flash(socket, :error, "Only admins can delete organizations")}
-    end
-  end
-  
-  def handle_event("delete_organization", %{"id" => id}, socket) do
-    if socket.assigns.current_user.role == :admin do
-      case Ash.get(Organization, id, actor: socket.assigns.current_user) do
-        {:ok, organization} ->
-          case Ash.destroy(organization, actor: socket.assigns.current_user) do
+      case Ash.get(OrganizationLocation, id, actor: socket.assigns.current_user) do
+        {:ok, location} ->
+          case Ash.destroy(location, actor: socket.assigns.current_user) do
             :ok ->
-              # Reload organizations
               {:noreply,
                socket
-               |> put_flash(:info, "Organization deleted successfully")
-               |> load_organizations()}
+               |> put_flash(:info, "Location deleted successfully")
+               |> load_locations()}
             
             {:error, _error} ->
-              {:noreply, put_flash(socket, :error, "Failed to delete organization")}
+              {:noreply, put_flash(socket, :error, "Failed to delete location")}
           end
         
         {:error, _error} ->
-          {:noreply, put_flash(socket, :error, "Organization not found")}
+          {:noreply, put_flash(socket, :error, "Location not found")}
       end
     else
-      {:noreply, put_flash(socket, :error, "Only admins can delete organizations")}
+      {:noreply, put_flash(socket, :error, "Only admins can delete locations")}
     end
   end
   
   @impl true
-  def handle_info({:organization_created, message}, socket) do
-    # Reload organizations
+  def handle_info({:location_created, message}, socket) do
     {:noreply,
      socket
-     |> assign(:show_organization_modal, false)
+     |> assign(:show_location_modal, false)
      |> put_flash(:info, message)
-     |> load_organizations()}
+     |> load_locations()}
   end
   
-  def handle_info({:organization_updated, message}, socket) do
-    # Determine where to redirect after update
-    redirect_path = socket.assigns[:return_to] || ~p"/admin/organizations"
+  def handle_info({:location_updated, message}, socket) do
+    redirect_path = socket.assigns[:return_to] || ~p"/admin/organizations/#{socket.assigns.organization_id}/locations"
     
-    # Reload organizations
     {:noreply,
      socket
-     |> assign(:show_organization_modal, false)
+     |> assign(:show_location_modal, false)
      |> put_flash(:info, message)
-     |> load_organizations()
+     |> load_locations()
      |> push_navigate(to: redirect_path)}
   end
   
   def handle_info({:close_modal}, socket) do
-    # Determine where to redirect after closing modal
-    redirect_path = socket.assigns[:return_to] || ~p"/admin/organizations"
+    redirect_path = socket.assigns[:return_to] || ~p"/admin/organizations/#{socket.assigns.organization_id}/locations"
     
     {:noreply,
      socket
-     |> assign(:show_organization_modal, false)
+     |> assign(:show_location_modal, false)
      |> push_navigate(to: redirect_path)}
   end
   
-  # Load organizations with server-side filtering, sorting, and pagination
-  defp load_organizations(socket) do
-    {query, count_query} = build_organization_query(socket)
+  # Load organization and its locations
+  defp load_organization_and_locations(socket) do
+    organization_id = socket.assigns.organization_id
     
-    with {:ok, organizations} <- Ash.read(apply_pagination(query, socket.assigns.page, socket.assigns.per_page), actor: socket.assigns.current_user),
+    case Ash.get(Organization, organization_id, actor: socket.assigns.current_user) do
+      {:ok, organization} ->
+        socket = 
+          socket
+          |> assign(:organization, organization)
+          |> assign(:page_title, "Manage Locations - #{organization.organization_name}")
+          |> load_locations()
+        
+        {:ok, socket}
+      
+      {:error, _error} ->
+        socket = 
+          socket
+          |> put_flash(:error, "Organization not found")
+          |> redirect(to: ~p"/admin/organizations")
+        
+        {:error, socket}
+    end
+  end
+  
+  # Load locations with server-side filtering, sorting, and pagination
+  defp load_locations(socket) do
+    {query, count_query} = build_location_query(socket)
+    
+    with {:ok, locations} <- Ash.read(apply_pagination(query, socket.assigns.page, socket.assigns.per_page), actor: socket.assigns.current_user),
          {:ok, total_count} <- Ash.count(count_query, actor: socket.assigns.current_user) do
       socket
-      |> assign(:organizations, organizations)
+      |> assign(:locations, locations)
       |> assign(:total_count, total_count)
     else
       {:error, _} ->
         socket
-        |> assign(:organizations, [])
+        |> assign(:locations, [])
         |> assign(:total_count, 0)
-        |> put_flash(:error, "Failed to load organizations")
+        |> put_flash(:error, "Failed to load locations")
     end
   end
   
-  # Build organization query with filters and sorting
-  defp build_organization_query(socket) do
-    query = Organization
+  # Build location query with filters and sorting
+  defp build_location_query(socket) do
+    query = OrganizationLocation
+      |> apply_organization_filter(socket.assigns.organization_id)
       |> apply_search_filter(socket.assigns.search_term)
-      |> apply_verification_filter(socket.assigns.verification_filter)
       |> apply_sorting(socket.assigns.sort_by, socket.assigns.sort_order)
     
-    count_query = Organization
+    count_query = OrganizationLocation
+      |> apply_organization_filter(socket.assigns.organization_id)
       |> apply_search_filter(socket.assigns.search_term)
-      |> apply_verification_filter(socket.assigns.verification_filter)
     
     {query, count_query}
+  end
+  
+  # Apply organization filter to query
+  defp apply_organization_filter(query, organization_id) do
+    require Ash.Query
+    import Ash.Expr
+    
+    query |> Ash.Query.filter(expr(organization_id == ^organization_id))
   end
   
   # Apply search filter to query
@@ -281,26 +252,11 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
     query
     |> Ash.Query.filter(
       expr(
-        contains(organization_name, ^search_term) or
-        contains(email_domain, ^search_term) or
-        contains(fragment("(?->>'industry_sector')", core_profile), ^search_term)
+        contains(location_name, ^search_term) or
+        contains(postcode, ^search_term) or
+        contains(geographic_region, ^search_term)
       )
     )
-  end
-  
-  # Apply verification filter to query
-  defp apply_verification_filter(query, "all"), do: query
-  defp apply_verification_filter(query, "verified") do
-    require Ash.Query
-    import Ash.Expr
-    
-    query |> Ash.Query.filter(expr(verified == true))
-  end
-  defp apply_verification_filter(query, "unverified") do
-    require Ash.Query
-    import Ash.Expr
-    
-    query |> Ash.Query.filter(expr(verified == false))
   end
   
   # Apply sorting to query
@@ -310,22 +266,20 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
     sort_order_atom = if sort_order == "desc", do: :desc, else: :asc
     
     case sort_by do
-      "organization_name" ->
-        query |> Ash.Query.sort(organization_name: sort_order_atom)
-      "email_domain" ->
-        query |> Ash.Query.sort(email_domain: sort_order_atom)
-      "verified" ->
-        query |> Ash.Query.sort(verified: sort_order_atom)
+      "location_name" ->
+        query |> Ash.Query.sort(location_name: sort_order_atom)
+      "location_type" ->
+        query |> Ash.Query.sort(location_type: sort_order_atom)
+      "geographic_region" ->
+        query |> Ash.Query.sort(geographic_region: sort_order_atom)
+      "operational_status" ->
+        query |> Ash.Query.sort(operational_status: sort_order_atom)
+      "employee_count" ->
+        query |> Ash.Query.sort(employee_count: sort_order_atom)
       "inserted_at" ->
         query |> Ash.Query.sort(inserted_at: sort_order_atom)
-      "profile_completeness_score" ->
-        query |> Ash.Query.sort(profile_completeness_score: sort_order_atom)
-      "organization_type" ->
-        # Sort by organization type in core_profile - for now, sort by organization name
-        # TODO: Implement proper JSON field sorting when Ash supports it better
-        query |> Ash.Query.sort(organization_name: sort_order_atom)
       _ ->
-        query |> Ash.Query.sort(organization_name: :asc)
+        query |> Ash.Query.sort(location_name: :asc)
     end
   end
   
@@ -361,6 +315,26 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
     start_page..end_page |> Enum.to_list()
   end
   
+  # Helper to humanize atom values
+  defp humanize_atom(atom) when is_atom(atom) do
+    atom
+    |> Atom.to_string()
+    |> humanize_string()
+  end
+  
+  defp humanize_atom(string) when is_binary(string) do
+    humanize_string(string)
+  end
+  
+  defp humanize_atom(nil), do: "Not specified"
+  
+  defp humanize_string(string) do
+    string
+    |> String.replace("_", " ")
+    |> String.split(" ")
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
+  end
   
   @impl true
   def render(assigns) do
@@ -374,11 +348,6 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               navigate={~p"/admin"}
               class="text-gray-400 hover:text-gray-600 transition-colors duration-200"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5v4" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 5v4" />
-              </svg>
               Admin Dashboard
             </.link>
           </li>
@@ -387,8 +356,34 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </li>
+          <li>
+            <.link
+              patch={~p"/admin/organizations"}
+              class="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            >
+              Organizations
+            </.link>
+          </li>
+          <li>
+            <svg class="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </li>
+          <li>
+            <.link
+              patch={~p"/admin/organizations/#{@organization_id}"}
+              class="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            >
+              <%= @organization.organization_name %>
+            </.link>
+          </li>
+          <li>
+            <svg class="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </li>
           <li class="text-gray-900 font-medium">
-            Organization Management
+            Location Management
           </li>
         </ol>
       </nav>
@@ -396,18 +391,18 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
       <!-- Header -->
       <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">
-          <h1 class="text-2xl font-semibold text-gray-900">Organization Management</h1>
+          <h1 class="text-2xl font-semibold text-gray-900">Location Management</h1>
           <p class="mt-2 text-sm text-gray-700">
-            Manage organizations, their verification status, and profile information.
+            Manage locations for <strong><%= @organization.organization_name %></strong>
           </p>
         </div>
         <%= if @current_user.role == :admin do %>
           <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
             <.link
-              patch={~p"/admin/organizations/new"}
+              patch={~p"/admin/organizations/#{@organization_id}/locations/new"}
               class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
             >
-              New Organization
+              New Location
             </.link>
           </div>
         <% end %>
@@ -415,7 +410,7 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
 
       <!-- Search and Filters -->
       <div class="bg-white p-4 rounded-lg shadow space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Search -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -424,34 +419,19 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               value={@search_term}
               phx-change="search"
               name="search"
-              placeholder="Search by name, domain, or industry..."
+              placeholder="Search by name, postcode, or region..."
               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
-          </div>
-
-          <!-- Verification Filter -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
-            <select
-              phx-change="filter_verification"
-              name="verification"
-              value={@verification_filter}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              <option value="all">All Organizations</option>
-              <option value="verified">Verified Only</option>
-              <option value="unverified">Unverified Only</option>
-            </select>
           </div>
 
           <!-- Results Info -->
           <div class="flex items-center justify-between">
             <span class="text-sm text-gray-500">
-              <%= @total_count %> organization(s) total
+              <%= @total_count %> location(s) total
             </span>
-            <%= if length(@selected_organizations) > 0 do %>
+            <%= if length(@selected_locations) > 0 do %>
               <span class="text-sm font-medium text-blue-600">
-                <%= length(@selected_organizations) %> selected
+                <%= length(@selected_locations) %> selected
               </span>
             <% end %>
           </div>
@@ -459,23 +439,17 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
       </div>
 
       <!-- Bulk Actions -->
-      <%= if length(@selected_organizations) > 0 do %>
+      <%= if length(@selected_locations) > 0 do %>
         <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-blue-800">
-              <%= length(@selected_organizations) %> organization(s) selected
+              <%= length(@selected_locations) %> location(s) selected
             </span>
             <div class="flex space-x-2">
-              <button
-                phx-click="bulk_verify"
-                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                Verify Selected
-              </button>
               <%= if @current_user.role == :admin do %>
                 <button
                   phx-click="bulk_delete"
-                  data-confirm="Are you sure you want to delete the selected organizations?"
+                  data-confirm="Are you sure you want to delete the selected locations?"
                   class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   Delete Selected
@@ -499,10 +473,10 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
         </p>
       </div>
 
-      <!-- Organizations Table -->
+      <!-- Locations Table -->
       <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200" style="min-width: 1200px;">
+          <table class="min-w-full divide-y divide-gray-200" style="min-width: 1000px;">
           <thead class="bg-gray-50">
             <tr>
               <th class="w-8 px-6 py-3">
@@ -513,18 +487,14 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
                 />
               </th>
               
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Locations
-              </th>
-              
               <th
                 phx-click="sort"
-                phx-value-field="organization_name"
+                phx-value-field="location_name"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>Organization</span>
-                  <%= if @sort_by == "organization_name" do %>
+                  <span>Location</span>
+                  <%= if @sort_by == "location_name" do %>
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <%= if @sort_order == "asc" do %>
                         <path d="M5 8l5-5 5 5H5z"/>
@@ -538,12 +508,12 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               
               <th
                 phx-click="sort"
-                phx-value-field="organization_type"
+                phx-value-field="location_type"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
                   <span>Type</span>
-                  <%= if @sort_by == "organization_type" do %>
+                  <%= if @sort_by == "location_type" do %>
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <%= if @sort_order == "asc" do %>
                         <path d="M5 8l5-5 5 5H5z"/>
@@ -557,12 +527,12 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               
               <th
                 phx-click="sort"
-                phx-value-field="email_domain"
+                phx-value-field="geographic_region"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>Domain</span>
-                  <%= if @sort_by == "email_domain" do %>
+                  <span>Region</span>
+                  <%= if @sort_by == "geographic_region" do %>
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <%= if @sort_order == "asc" do %>
                         <path d="M5 8l5-5 5 5H5z"/>
@@ -575,17 +545,17 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               </th>
               
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Industry
+                Postcode
               </th>
               
               <th
                 phx-click="sort"
-                phx-value-field="verified"
+                phx-value-field="operational_status"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
                   <span>Status</span>
-                  <%= if @sort_by == "verified" do %>
+                  <%= if @sort_by == "operational_status" do %>
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <%= if @sort_order == "asc" do %>
                         <path d="M5 8l5-5 5 5H5z"/>
@@ -599,12 +569,12 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               
               <th
                 phx-click="sort"
-                phx-value-field="profile_completeness_score"
+                phx-value-field="employee_count"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>Completeness</span>
-                  <%= if @sort_by == "profile_completeness_score" do %>
+                  <span>Employees</span>
+                  <%= if @sort_by == "employee_count" do %>
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <%= if @sort_order == "asc" do %>
                         <path d="M5 8l5-5 5 5H5z"/>
@@ -616,120 +586,115 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
                 </div>
               </th>
               
-              <th
-                phx-click="sort"
-                phx-value-field="inserted_at"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-              >
-                <div class="flex items-center space-x-1">
-                  <span>Created</span>
-                  <%= if @sort_by == "inserted_at" do %>
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <%= if @sort_order == "asc" do %>
-                        <path d="M5 8l5-5 5 5H5z"/>
-                      <% else %>
-                        <path d="M15 12l-5 5-5-5h10z"/>
-                      <% end %>
-                    </svg>
-                  <% end %>
-                </div>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
               </th>
-              
             </tr>
           </thead>
           
           <tbody class="bg-white divide-y divide-gray-200">
-            <%= for organization <- @organizations do %>
+            <%= for location <- @locations do %>
               <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4">
                   <input
                     type="checkbox"
-                    checked={organization.id in @selected_organizations}
-                    phx-click="select_organization"
-                    phx-value-id={organization.id}
+                    checked={location.id in @selected_locations}
+                    phx-click="select_location"
+                    phx-value-id={location.id}
                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </td>
                 
-                <td class="px-6 py-4 text-left text-sm font-medium">
-                  <.link
-                    navigate={~p"/admin/organizations/#{organization.id}/locations"}
-                    class="text-indigo-600 hover:text-indigo-900"
-                  >
-                    Manage
-                  </.link>
-                </td>
-                
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <.link
-                    patch={~p"/admin/organizations/#{organization.id}/edit?return_to=#{URI.encode("/admin/organizations")}"}
-                    class="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    <%= organization.organization_name %>
-                  </.link>
-                </td>
-                
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <%= organization.core_profile["organization_type"] || "Not specified" %>
-                </td>
-                
-                <td class="px-6 py-4 text-sm text-gray-900">
-                  <%= organization.email_domain %>
-                </td>
-                
-                <td class="px-6 py-4 text-sm text-gray-900">
-                  <%= organization.core_profile["industry_sector"] || "Not specified" %>
-                </td>
-                
-                <td class="px-6 py-4">
-                  <%= if organization.verified do %>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Verified
-                    </span>
-                  <% else %>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      Unverified
-                    </span>
-                  <% end %>
-                </td>
-                
-                <td class="px-6 py-4">
                   <div class="flex items-center">
-                    <div class="w-16 bg-gray-200 rounded-full h-2">
-                      <div
-                        class="bg-blue-600 h-2 rounded-full"
-                        style={"width: #{round(Decimal.to_float(organization.profile_completeness_score || 0) * 100)}%"}
-                      >
+                    <div>
+                      <div class="text-sm font-medium text-gray-900">
+                        <%= location.location_name %>
+                        <%= if location.is_primary_location do %>
+                          <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Primary
+                          </span>
+                        <% end %>
                       </div>
                     </div>
-                    <span class="ml-2 text-sm text-gray-600">
-                      <%= round(Decimal.to_float(organization.profile_completeness_score || 0) * 100) %>%
-                    </span>
                   </div>
                 </td>
                 
-                <td class="px-6 py-4 text-sm text-gray-500">
-                  <%= Calendar.strftime(organization.inserted_at, "%Y-%m-%d") %>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= humanize_atom(location.location_type) %>
                 </td>
                 
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= humanize_atom(location.geographic_region) %>
+                </td>
+                
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= location.postcode || "Not specified" %>
+                </td>
+                
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class={"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " <> 
+                    case location.operational_status do
+                      :active -> "bg-green-100 text-green-800"
+                      :inactive -> "bg-red-100 text-red-800"
+                      :seasonal -> "bg-yellow-100 text-yellow-800"
+                      _ -> "bg-gray-100 text-gray-800"
+                    end}>
+                    <%= humanize_atom(location.operational_status) %>
+                  </span>
+                </td>
+                
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= location.employee_count || "Not specified" %>
+                </td>
+                
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                  <.link
+                    patch={~p"/admin/organizations/#{@organization_id}/locations/#{location.id}/edit"}
+                    class="text-blue-600 hover:text-blue-900"
+                  >
+                    Edit
+                  </.link>
+                  <%= if @current_user.role == :admin && !location.is_primary_location do %>
+                    <button
+                      phx-click="delete_location"
+                      phx-value-id={location.id}
+                      data-confirm="Are you sure you want to delete this location?"
+                      class="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  <% end %>
+                </td>
               </tr>
             <% end %>
           </tbody>
         </table>
         
-        <%= if length(@organizations) == 0 do %>
+        <%= if length(@locations) == 0 do %>
           <div class="text-center py-12">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No organizations found</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No locations found</h3>
             <p class="mt-1 text-sm text-gray-500">
-              <%= if @search_term != "" or @verification_filter != "all" do %>
-                Try adjusting your search or filters.
+              <%= if @search_term != "" do %>
+                Try adjusting your search terms.
               <% else %>
-                Get started by creating a new organization.
+                This organization doesn't have any locations yet.
               <% end %>
             </p>
+            <%= if @current_user.role == :admin do %>
+              <div class="mt-6">
+                <.link
+                  patch={~p"/admin/organizations/#{@organization_id}/locations/new"}
+                  class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Add First Location
+                </.link>
+              </div>
+            <% end %>
           </div>
         <% end %>
         </div>
@@ -766,7 +731,7 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
               <p class="text-sm text-gray-700">
                 Showing <span class="font-medium"><%= info.start %></span> to 
                 <span class="font-medium"><%= info.end %></span> of 
-                <span class="font-medium"><%= info.total %></span> organizations
+                <span class="font-medium"><%= info.total %></span> locations
               </p>
             </div>
             
@@ -825,12 +790,13 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationListLive do
       <% end %>
     </div>
 
-    <!-- Organization Form Modal -->
-    <%= if @show_organization_modal do %>
+    <!-- Location Form Modal -->
+    <%= if @show_location_modal do %>
       <.live_component
-        module={OrganizationFormComponent}
-        id="organization-form"
-        organization={@editing_organization}
+        module={LocationFormComponent}
+        id="location-form"
+        location={@editing_location}
+        organization_id={@organization_id}
         current_user={@current_user}
       />
     <% end %>

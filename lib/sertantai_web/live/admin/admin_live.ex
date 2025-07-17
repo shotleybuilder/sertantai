@@ -9,7 +9,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
   use SertantaiWeb, :live_view
   
   alias Sertantai.Accounts.User
-  alias Sertantai.Organizations.Organization
+  alias Sertantai.Organizations.{Organization, OrganizationLocation}
   alias Sertantai.Sync.SyncConfiguration
   
   @impl true
@@ -61,11 +61,81 @@ defmodule SertantaiWeb.Admin.AdminLive do
         {:ok, count} -> count
         _ -> 0
       end
+      
+    # Load location statistics
+    location_stats = load_location_statistics(socket)
     
     socket
     |> assign(:user_count, user_count)
     |> assign(:org_count, org_count)
     |> assign(:sync_count, sync_count)
+    |> assign(:location_stats, location_stats)
+  end
+  
+  defp load_location_statistics(socket) do
+    require Ash.Query
+    import Ash.Expr
+    
+    actor = socket.assigns.current_user
+    
+    # Total locations count
+    total_locations = 
+      case Ash.count(OrganizationLocation, actor: actor) do
+        {:ok, count} -> count
+        _ -> 0
+      end
+    
+    # Active locations count
+    active_locations = 
+      case OrganizationLocation
+           |> Ash.Query.filter(expr(operational_status == :active))
+           |> Ash.count(actor: actor) do
+        {:ok, count} -> count
+        _ -> 0
+      end
+    
+    # Primary locations count
+    primary_locations = 
+      case OrganizationLocation
+           |> Ash.Query.filter(expr(is_primary_location == true))
+           |> Ash.count(actor: actor) do
+        {:ok, count} -> count
+        _ -> 0
+      end
+    
+    # Organizations with locations
+    orgs_with_locations = 
+      case Organization
+           |> Ash.Query.load([:organization_locations])
+           |> Ash.read(actor: actor) do
+        {:ok, orgs} -> 
+          orgs
+          |> Enum.filter(fn org -> length(org.organization_locations || []) > 0 end)
+          |> length()
+        _ -> 0
+      end
+    
+    # Recent locations (last 7 days)
+    seven_days_ago = DateTime.utc_now() |> DateTime.add(-7, :day)
+    recent_locations = 
+      case OrganizationLocation
+           |> Ash.Query.filter(expr(inserted_at >= ^seven_days_ago))
+           |> Ash.Query.sort(inserted_at: :desc)
+           |> Ash.Query.limit(5)
+           |> Ash.Query.load([:organization])
+           |> Ash.read(actor: actor) do
+        {:ok, locations} -> locations
+        _ -> []
+      end
+    
+    %{
+      total: total_locations,
+      active: active_locations,
+      primary: primary_locations,
+      orgs_with_locations: orgs_with_locations,
+      recent: recent_locations,
+      inactive: total_locations - active_locations
+    }
   end
   
   @impl true
@@ -156,14 +226,14 @@ defmodule SertantaiWeb.Admin.AdminLive do
               <!-- Organization Locations -->
               <li>
                 <.link
-                  patch={~p"/admin/organizations"}
+                  navigate={~p"/admin/organizations/locations"}
                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-50 hover:text-gray-900"
                 >
                   <svg class="mr-3 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  Locations
+                  Organization Locations
                 </.link>
               </li>
               
@@ -223,7 +293,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
               </h2>
               
               <!-- Quick Stats -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div class="bg-blue-50 rounded-lg p-4 sm:p-6">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1 min-w-0">
@@ -277,6 +347,28 @@ defmodule SertantaiWeb.Admin.AdminLive do
                     </div>
                   </div>
                 </div>
+                
+                <div class="bg-purple-50 rounded-lg p-4 sm:p-6">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center flex-1 min-w-0">
+                      <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <div class="ml-4 flex-1 min-w-0">
+                        <p class="text-sm font-medium text-purple-600 truncate">Total Locations</p>
+                        <p class="text-2xl font-bold text-gray-900">
+                          <%= @location_stats.total %>
+                        </p>
+                        <p class="text-xs text-purple-500 mt-1">
+                          <%= @location_stats.active %> active, <%= @location_stats.inactive %> inactive
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <!-- Welcome Message -->
@@ -293,7 +385,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
                   <% end %>
                 </p>
                 
-                <div class="flex space-x-4">
+                <div class="flex flex-wrap gap-3">
                   <.link
                     patch={~p"/admin/users"}
                     class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -307,8 +399,115 @@ defmodule SertantaiWeb.Admin.AdminLive do
                   >
                     View Organizations
                   </.link>
+                  
+                  <.link
+                    navigate={~p"/admin/organizations/locations"}
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Search Locations
+                  </.link>
                 </div>
               </div>
+              
+              <!-- Location Insights Section -->
+              <%= if @location_stats.total > 0 do %>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                  <!-- Location Summary -->
+                  <div class="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Location Overview</h3>
+                    <div class="space-y-3">
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600">Organizations with locations</span>
+                        <span class="font-medium text-gray-900"><%= @location_stats.orgs_with_locations %></span>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600">Primary locations</span>
+                        <span class="font-medium text-gray-900"><%= @location_stats.primary %></span>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600">Active locations</span>
+                        <div class="flex items-center space-x-2">
+                          <span class="font-medium text-green-600"><%= @location_stats.active %></span>
+                          <div class="w-16 bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style={"width: #{if @location_stats.total > 0, do: (@location_stats.active / @location_stats.total * 100), else: 0}%"}></div>
+                          </div>
+                        </div>
+                      </div>
+                      <%= if @location_stats.inactive > 0 do %>
+                        <div class="flex items-center justify-between">
+                          <span class="text-sm text-gray-600">Inactive locations</span>
+                          <span class="font-medium text-red-600"><%= @location_stats.inactive %></span>
+                        </div>
+                      <% end %>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                      <.link
+                        navigate={~p"/admin/organizations/locations"}
+                        class="text-sm font-medium text-blue-600 hover:text-blue-500"
+                      >
+                        View all locations →
+                      </.link>
+                    </div>
+                  </div>
+                  
+                  <!-- Recent Location Activity -->
+                  <div class="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Location Activity</h3>
+                    <%= if length(@location_stats.recent) > 0 do %>
+                      <div class="space-y-3">
+                        <%= for location <- @location_stats.recent do %>
+                          <div class="flex items-center justify-between py-2">
+                            <div class="flex-1 min-w-0">
+                              <p class="text-sm font-medium text-gray-900 truncate">
+                                <%= location.location_name %>
+                              </p>
+                              <p class="text-xs text-gray-500">
+                                <%= location.organization.organization_name %>
+                              </p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                              <span class={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium " <> 
+                                case location.operational_status do
+                                  :active -> "bg-green-100 text-green-800"
+                                  :inactive -> "bg-red-100 text-red-800"
+                                  :seasonal -> "bg-yellow-100 text-yellow-800"
+                                  _ -> "bg-gray-100 text-gray-800"
+                                end}>
+                                <%= String.capitalize(to_string(location.operational_status)) %>
+                              </span>
+                              <span class="text-xs text-gray-400">
+                                <%= Calendar.strftime(location.inserted_at, "%m/%d") %>
+                              </span>
+                            </div>
+                          </div>
+                        <% end %>
+                      </div>
+                      
+                      <div class="mt-4 pt-4 border-t border-gray-200">
+                        <.link
+                          navigate={~p"/admin/organizations/locations"}
+                          class="text-sm font-medium text-blue-600 hover:text-blue-500"
+                        >
+                          Search all locations →
+                        </.link>
+                      </div>
+                    <% else %>
+                      <div class="text-center py-4">
+                        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <p class="text-sm text-gray-500 mt-2">No recent location activity</p>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
             </div>
             
             <!-- Mobile Navigation Menu -->
@@ -337,7 +536,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
                   </.link>
                   
                   <.link
-                    patch={~p"/admin/organizations"}
+                    navigate={~p"/admin/organizations/locations"}
                     class="flex items-center p-3 text-sm font-medium text-gray-700 rounded-md bg-gray-50 hover:bg-gray-100"
                   >
                     <svg class="mr-2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

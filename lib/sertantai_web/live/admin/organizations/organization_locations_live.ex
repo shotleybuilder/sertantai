@@ -446,12 +446,31 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationLocationsLive do
               <%= length(@selected_locations) %> location(s) selected
             </span>
             <div class="flex space-x-2">
+              <%= if length(@selected_locations) == 1 do %>
+                <%
+                  selected_location = Enum.find(@locations, fn loc -> loc.id in @selected_locations end)
+                %>
+                <%= if selected_location do %>
+                  <.link
+                    patch={~p"/admin/organizations/#{@organization_id}/locations/#{selected_location.id}/edit"}
+                    class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit Location
+                  </.link>
+                <% end %>
+              <% end %>
               <%= if @current_user.role == :admin do %>
                 <button
                   phx-click="bulk_delete"
                   data-confirm="Are you sure you want to delete the selected locations?"
                   class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
+                  <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
                   Delete Selected
                 </button>
               <% end %>
@@ -459,6 +478,9 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationLocationsLive do
                 phx-click="clear_selection"
                 class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
+                <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 Clear Selection
               </button>
             </div>
@@ -586,9 +608,6 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationLocationsLive do
                 </div>
               </th>
               
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
             </tr>
           </thead>
           
@@ -608,8 +627,13 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationLocationsLive do
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div>
-                      <div class="text-sm font-medium text-gray-900">
-                        <%= location.location_name %>
+                      <div class="text-sm font-medium">
+                        <.link
+                          patch={~p"/admin/organizations/#{@organization_id}/locations/#{location.id}/edit"}
+                          class="text-blue-600 hover:text-blue-900 hover:underline"
+                        >
+                          <%= location.location_name %>
+                        </.link>
                         <%= if location.is_primary_location do %>
                           <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             Primary
@@ -648,24 +672,6 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationLocationsLive do
                   <%= location.employee_count || "Not specified" %>
                 </td>
                 
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                  <.link
-                    patch={~p"/admin/organizations/#{@organization_id}/locations/#{location.id}/edit"}
-                    class="text-blue-600 hover:text-blue-900"
-                  >
-                    Edit
-                  </.link>
-                  <%= if @current_user.role == :admin && !location.is_primary_location do %>
-                    <button
-                      phx-click="delete_location"
-                      phx-value-id={location.id}
-                      data-confirm="Are you sure you want to delete this location?"
-                      class="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  <% end %>
-                </td>
               </tr>
             <% end %>
           </tbody>
@@ -796,7 +802,7 @@ defmodule SertantaiWeb.Admin.Organizations.OrganizationLocationsLive do
         module={LocationFormComponent}
         id="location-form"
         location={@editing_location}
-        organization_id={@organization_id}
+        organization={@organization}
         current_user={@current_user}
       />
     <% end %>

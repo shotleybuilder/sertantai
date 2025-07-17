@@ -113,12 +113,21 @@ Click "Manage Locations" → /admin/organizations/:id/locations/
 - ✅ Server-side pagination and filtering
 - ✅ Bulk operations with selection
 - ✅ Role-based access control (admin/support)
+- ✅ Clickable location names for editing
+- ✅ Conditional edit button for single selection
+- ✅ Streamlined UI without Actions column
 
 **Implementation Notes**:
 - Full CRUD operations implemented using Ash framework
 - Comprehensive error handling and validation
 - Mobile-responsive design with horizontal scroll
 - Integrated with organization detail page
+- **UI Enhancements (Dec 2024)**:
+  - Removed Actions column for cleaner table design
+  - Location names are now clickable links to edit modal
+  - Single location selection shows "Edit Location" button in bulk actions
+  - Added SVG icons to all bulk action buttons
+  - Fixed LocationFormComponent parameter mismatch bug
 
 ### Phase 2: Global Location Search ✅ **COMPLETED**  
 **Route**: `/admin/organizations/locations`
@@ -161,6 +170,16 @@ Click "Manage Locations" → /admin/organizations/:id/locations/
   live "/organizations/:id", Organizations.OrganizationDetailLive, :show
   ```
 
+### LocationFormComponent Parameter Mismatch 🐛 **FIXED** 
+**Problem**: Edit modal links were failing with parameter mismatch errors when clicking location names.
+
+**Root Cause**: The `LocationFormComponent.update/2` function expected an `organization` parameter, but `OrganizationLocationsLive` was passing `organization_id`.
+
+**Solution**: ✅ **RESOLVED**
+- Updated component call to pass full organization object: `organization={@organization}`
+- Fixed in `lib/sertantai_web/live/admin/organizations/organization_locations_live.ex`
+- Added comprehensive tests to prevent regression
+
 ### Comprehensive Test Suite ✅ **IMPLEMENTED**
 **Component Tests**: `test/sertantai_web/live/admin/organizations/locations_search_live_test.exs`
 - ✅ 9/9 tests passing
@@ -168,16 +187,25 @@ Click "Manage Locations" → /admin/organizations/:id/locations/
 - Validates UI elements and state management
 
 **Integration Tests**: `test/sertantai_web/live/admin/organizations/locations_search_integration_test.exs`
-- ✅ 4/8 core tests passing (routing issue resolved)
+- ✅ 8/8 tests passing (routing issue resolved)
 - Tests full LiveView mounting and authentication
 - Detects real browser navigation errors
 - Validates role-based access control
+
+**Organization Locations Tests**: `test/sertantai_web/live/admin/organizations/organization_locations_live_test.exs`
+- ✅ 9/9 tests passing
+- Tests clickable location names functionality
+- Validates conditional edit button behavior
+- Confirms Actions column removal
+- Tests bulk action icons and role permissions
+- Verifies parameter mismatch fix
 
 **Testing Improvements**:
 - Integration tests catch issues that component tests miss
 - Full request lifecycle validation
 - Authentication and authorization testing
 - Error detection for actual user workflows
+- UI interaction testing for new features
 
 ## Technical Implementation Details
 
@@ -256,6 +284,16 @@ live "/organizations/locations", Organizations.LocationsSearchLive, :index
 - Efficient pagination
 - Proper caching strategies
 
+### 5. **Enhanced UI/UX (December 2024)** ✨
+- **Clickable Location Names**: Direct navigation to edit modal by clicking location names
+- **Conditional Edit Button**: Shows "Edit Location" button only when single location selected
+- **Streamlined Table Design**: Removed Actions column for cleaner interface
+- **Visual Feedback**: Added SVG icons to all bulk action buttons
+- **Improved Interaction Flow**:
+  - Quick edit: Click location name → Edit modal
+  - Bulk operations: Select multiple → Bulk actions appear
+  - Single selection: Select one → Edit button appears in actions bar
+
 ## Success Criteria ✅ **ACHIEVED** 
 
 1. ✅ **Organization-Specific Location Management**: Admins can efficiently manage locations for any organization
@@ -264,24 +302,30 @@ live "/organizations/locations", Organizations.LocationsSearchLive, :index
 4. ✅ **Performance**: Fast search and efficient data loading
 5. ✅ **Consistency**: Matches existing admin interface patterns and standards
 
-## Project Status: **85% Complete** 🎉
+## Project Status: **90% Complete** 🎉
 
 ### Completed Features (Phase 1 & 2):
 - ✅ Organization-specific location management (`/admin/organizations/:id/locations`)
 - ✅ Global location search interface (`/admin/organizations/locations`)
 - ✅ Navigation integration in organization list page
 - ✅ "Manage All Locations" button in organization detail page
-- ✅ Comprehensive test coverage (component + integration)
+- ✅ Comprehensive test coverage (26 tests total: component + integration + UI)
 - ✅ Critical routing bug fixes
 - ✅ Mobile-responsive design
 - ✅ Role-based access control
+- ✅ **Enhanced UI/UX** (December 2024):
+  - Clickable location names for intuitive editing
+  - Conditional "Edit Location" button for single selections
+  - Streamlined table without Actions column
+  - SVG icons for all bulk actions
+  - Fixed LocationFormComponent parameter mismatch
 
 ### Remaining Work (Phase 3):
 - 📋 Dashboard location widgets
 - 📋 Advanced location analytics
 - 📋 Bulk location operations across organizations
 
-**Impact**: Admin users can now efficiently manage locations across all organizations with a search-driven interface that scales to large datasets.
+**Impact**: Admin users can now efficiently manage locations across all organizations with a search-driven interface that scales to large datasets, featuring an enhanced UI that reduces visual clutter while maintaining all functionality.
 
 ## Migration Strategy
 

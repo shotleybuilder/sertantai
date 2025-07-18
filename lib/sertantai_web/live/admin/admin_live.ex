@@ -205,7 +205,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-50 hover:text-gray-900"
                 >
                   <svg class="mr-3 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   Users
                 </.link>
@@ -253,16 +253,45 @@ defmodule SertantaiWeb.Admin.AdminLive do
               
               <!-- Billing (Admin only) -->
               <%= if @current_user.role == :admin do %>
-                <li>
-                  <.link
-                    patch={~p"/admin/billing"}
-                    class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-50 hover:text-gray-900"
-                  >
+                <li class="space-y-1">
+                  <div class="flex items-center px-4 py-2 text-sm font-medium text-gray-700">
                     <svg class="mr-3 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     Billing
-                  </.link>
+                  </div>
+                  <div class="ml-8 space-y-1">
+                    <.link
+                      patch={~p"/admin/billing/plans"}
+                      class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Plans
+                    </.link>
+                    <.link
+                      patch={~p"/admin/billing/subscriptions"}
+                      class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Subscriptions
+                    </.link>
+                    <.link
+                      patch={~p"/admin/billing/customers"}
+                      class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Customers
+                    </.link>
+                    <.link
+                      patch={~p"/admin/billing/payments"}
+                      class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Payments
+                    </.link>
+                    <.link
+                      patch={~p"/admin/billing/role-management"}
+                      class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Role Management
+                    </.link>
+                  </div>
                 </li>
               <% end %>
               
@@ -300,7 +329,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
                     <div class="flex items-center flex-1 min-w-0">
                       <div class="flex-shrink-0">
                         <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                       </div>
                       <div class="ml-4 flex-1 min-w-0">
@@ -521,7 +550,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
                     class="flex items-center p-3 text-sm font-medium text-gray-700 rounded-md bg-gray-50 hover:bg-gray-100"
                   >
                     <svg class="mr-2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     Users
                   </.link>
@@ -559,7 +588,7 @@ defmodule SertantaiWeb.Admin.AdminLive do
                   
                   <%= if @current_user.role == :admin do %>
                     <.link
-                      patch={~p"/admin/billing"}
+                      patch={~p"/admin/billing/plans"}
                       class="flex items-center p-3 text-sm font-medium text-gray-700 rounded-md bg-gray-50 hover:bg-gray-100"
                     >
                       <svg class="mr-2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

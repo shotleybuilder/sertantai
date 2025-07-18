@@ -50,7 +50,7 @@ config :spark,
 config :sertantai,
   ecto_repos: [Sertantai.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Sertantai.Domain, Sertantai.Accounts, Sertantai.Sync, Sertantai.Organizations, Sertantai.AI],
+  ash_domains: [Sertantai.Domain, Sertantai.Accounts, Sertantai.Sync, Sertantai.Organizations, Sertantai.AI, Sertantai.Billing],
   token_signing_secret: "j4ExRkxaAgc9P2MPrP6O0fd8bIr2LyTaRXL6V4BmlU7dGfWUh6RMufj4beJLBxuE"
 
 # Configures the endpoint
@@ -94,6 +94,14 @@ config :tailwind,
     ),
     cd: Path.expand("../assets", __DIR__)
   ]
+
+# Configure Stripe
+config :stripity_stripe,
+  api_key: System.get_env("STRIPE_SECRET_KEY"),
+  public_key: System.get_env("STRIPE_PUBLISHABLE_KEY")
+
+config :sertantai,
+  stripe_webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
 
 # Configures Elixir's Logger
 config :logger, :console,

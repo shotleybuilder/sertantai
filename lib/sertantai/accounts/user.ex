@@ -469,6 +469,7 @@ defmodule Sertantai.Accounts.User do
     has_many :sync_configurations, Sertantai.Sync.SyncConfiguration
     has_many :selected_records, Sertantai.Sync.SelectedRecord
     has_many :user_identities, Sertantai.Accounts.UserIdentity
+    has_one :customer, Sertantai.Billing.Customer
   end
 
   # Role-based authorization policies - FINAL WORKING CONFIGURATION

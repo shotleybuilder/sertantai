@@ -175,6 +175,13 @@ defmodule SertantaiWeb.Router do
   end
   
   # JSON API endpoints will be defined by the resource directly
+  
+  # Stripe webhook endpoint (no authentication required)
+  scope "/webhooks", SertantaiWeb do
+    pipe_through :api
+    
+    post "/stripe", StripeWebhookController, :webhook
+  end
 
   # Custom Admin Interface - replaces problematic AshAdmin
   # AshAdmin was disabled due to memory exhaustion issues (OOM killer)
@@ -210,7 +217,21 @@ defmodule SertantaiWeb.Router do
       live "/sync/new", Sync.SyncListLive, :new
       live "/sync/:id/edit", Sync.SyncListLive, :edit
       live "/sync/:id", Sync.SyncDetailLive, :show
-      live "/billing", BillingDashboardLive, :index
+      
+      # Billing Management Routes
+      live "/billing/plans", Billing.PlanLive, :index
+      live "/billing/plans/new", Billing.PlanLive, :new
+      live "/billing/plans/:id/edit", Billing.PlanLive, :edit
+      live "/billing/subscriptions", Billing.SubscriptionLive, :index
+      live "/billing/subscriptions/new", Billing.SubscriptionLive, :new
+      live "/billing/subscriptions/:id", Billing.SubscriptionLive, :show
+      live "/billing/customers", Billing.CustomerLive, :index
+      live "/billing/customers/:id", Billing.CustomerLive, :show
+      live "/billing/payments", Billing.PaymentLive, :index
+      live "/billing/payments/:id", Billing.PaymentLive, :show
+      live "/billing/role-management", Billing.RoleManagementLive, :index
+      live "/billing/role-management/:id", Billing.RoleManagementLive, :user_detail
+      
       live "/system", SystemMonitoringLive, :index
     end
   end

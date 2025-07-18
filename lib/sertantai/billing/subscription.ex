@@ -16,6 +16,10 @@ defmodule Sertantai.Billing.Subscription do
   postgres do
     table "billing_subscriptions"
     repo Sertantai.Repo
+    
+    custom_indexes do
+      index [:stripe_subscription_id], unique: true
+    end
   end
 
   attributes do
@@ -86,6 +90,10 @@ defmodule Sertantai.Billing.Subscription do
     end
 
     timestamps()
+  end
+
+  identities do
+    identity :unique_stripe_subscription_id, [:stripe_subscription_id]
   end
 
   actions do

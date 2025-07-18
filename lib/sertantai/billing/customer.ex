@@ -16,6 +16,10 @@ defmodule Sertantai.Billing.Customer do
   postgres do
     table "billing_customers"
     repo Sertantai.Repo
+    
+    custom_indexes do
+      index [:stripe_customer_id], unique: true
+    end
   end
 
   attributes do
@@ -31,7 +35,7 @@ defmodule Sertantai.Billing.Customer do
       description "Stripe Customer ID"
     end
     
-    attribute :email, :string do
+    attribute :email, :ci_string do
       allow_nil? false
       description "Customer email address"
     end
@@ -68,6 +72,10 @@ defmodule Sertantai.Billing.Customer do
     end
 
     timestamps()
+  end
+
+  identities do
+    identity :unique_stripe_customer_id, [:stripe_customer_id]
   end
 
   actions do

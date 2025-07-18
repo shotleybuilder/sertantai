@@ -126,6 +126,18 @@ mix ecto.setup              # Create, migrate, and seed database
 - **All test failures must be investigated and fixed, not dismissed as "non-critical"**
 - **If tests are failing, the code is not ready for production**
 
+**⚠️ ASH DOMAIN AUTHORIZATION TESTING RULES:**
+- **ALL tests for Ash domains with `require_actor? true` MUST include actor support**
+- **ALWAYS create admin user in test setup**: `Ash.create(User, attrs, action: :register_with_password)`
+- **ALWAYS include `actor: admin_user` parameter** in ALL Ash operations (create, read, update, destroy, load)
+- **Use `password_confirmation` field** when creating users with `:register_with_password` action
+
+**⚠️ ASH QUERY COMPILATION REQUIREMENTS:**
+- **ALWAYS add `require Ash.Query` and `import Ash.Expr`** at the top of test files using Ash queries
+- **Required for filter expressions**: `Ash.Query.filter(active == true)` won't compile without these imports
+- **Enables query building**: Without these, variables like `active` in filters cause "undefined variable" errors
+- **Add BEFORE any Ash.Query operations**: Place after other aliases but before describe blocks
+
 **⚠️ TERMINAL CRASH ISSUE**: Direct test execution causes terminal crashes. Use manual Tidewave MCP approach instead.
 
 **MANUAL TESTING APPROACH (Recommended):**

@@ -692,7 +692,7 @@ defmodule SertantaiDocsWeb.CoreComponents do
         </.link>
         
         <ul class="space-y-2">
-          <%= for item <- @items do %>
+          <%= for item <- (@items || []) do %>
             <li>
               <.nav_item 
                 item={item} 
@@ -711,18 +711,19 @@ defmodule SertantaiDocsWeb.CoreComponents do
   """
   attr :item, :map, required: true
   attr :current_path, :string, default: ""
+  attr :class, :string, default: ""
 
   def nav_item(assigns) do
     ~H"""
-    <div>
+    <div class={@class}>
       <.link 
-        navigate={@item.path || "#"}
+        navigate={Map.get(@item, :path, "#")}
         class={[
           "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-          if(@current_path == @item.path, do: "bg-blue-100 text-blue-700", else: "text-gray-700 hover:bg-gray-100")
+          if(@current_path == Map.get(@item, :path), do: "bg-blue-100 text-blue-700", else: "text-gray-700 hover:bg-gray-100")
         ]}
       >
-        <%= @item.title %>
+        <%= Map.get(@item, :title, "Untitled") %>
       </.link>
       
       <%= if Map.get(@item, :children, []) != [] do %>

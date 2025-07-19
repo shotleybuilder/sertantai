@@ -76,8 +76,15 @@ defmodule SertantaiDocsWeb.DevController do
   Get detailed information about a specific content file.
   """
   def content_info(conn, %{"path" => path}) do
+    # Handle wildcard path parameter (it's a list)
+    file_path = case path do
+      [single_path] -> single_path
+      multiple_parts when is_list(multiple_parts) -> Path.join(multiple_parts)
+      single_string when is_binary(single_string) -> single_string
+    end
+    
     # Decode the path parameter
-    decoded_path = URI.decode(path)
+    decoded_path = URI.decode(file_path)
     
     case MarkdownProcessor.get_metadata(decoded_path) do
       {:ok, metadata} ->

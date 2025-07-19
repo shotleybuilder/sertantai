@@ -7,6 +7,9 @@ config :sertantai_docs, SertantaiDocsWeb.Endpoint,
   secret_key_base: "M9wvWcCRGGfhQM6/ScQ86X4dwUesxqz9uOUEgisrxYeF8iuhyyESXOUgukFm8odw",
   server: false
 
+# Enable dev routes for testing the DevController
+config :sertantai_docs, dev_routes: true
+
 # In test we don't send emails
 config :sertantai_docs, SertantaiDocs.Mailer, adapter: Swoosh.Adapters.Test
 

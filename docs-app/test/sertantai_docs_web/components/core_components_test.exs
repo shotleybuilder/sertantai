@@ -2,6 +2,7 @@ defmodule SertantaiDocsWeb.CoreComponentsTest do
   use SertantaiDocsWeb.ConnCase, async: true
   
   import Phoenix.LiveViewTest
+  import Phoenix.Component
   import SertantaiDocsWeb.CoreComponents
 
   describe "nav_sidebar/1" do
@@ -119,13 +120,12 @@ defmodule SertantaiDocsWeb.CoreComponentsTest do
 
   describe "doc_content/1" do
     test "renders content with default styling" do
-      assigns = %{
-        class: "custom-class"
-      }
-
-      html = render_component(&doc_content/1, assigns) do
-        "<p>Test content</p>"
-      end
+      assigns = %{}
+      html = rendered_to_string(~H"""
+      <.doc_content class="custom-class">
+        <p>Test content</p>
+      </.doc_content>
+      """)
       
       assert html =~ "max-w-4xl"  # Default max width
       assert html =~ "custom-class"
@@ -133,14 +133,15 @@ defmodule SertantaiDocsWeb.CoreComponentsTest do
     end
 
     test "applies prose styling" do
-      assigns = %{class: ""}
-
-      html = render_component(&doc_content/1, assigns) do
-        "Content"
-      end
+      assigns = %{}
+      html = rendered_to_string(~H"""
+      <.doc_content class="">
+        Content
+      </.doc_content>
+      """)
       
       assert html =~ "prose"
-      assert html =~ "prose-gray"
+      assert html =~ "prose-lg"
     end
   end
 

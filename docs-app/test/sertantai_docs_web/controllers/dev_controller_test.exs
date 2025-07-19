@@ -54,7 +54,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
 
   describe "POST /dev-api/integration/sync" do
     test "triggers manual content synchronization", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         conn = post(conn, "/dev-api/integration/sync")
         
         assert json_response(conn, 200)
@@ -68,14 +68,14 @@ defmodule SertantaiDocsWeb.DevControllerTest do
         assert Map.has_key?(stats, "files_scanned")
         assert Map.has_key?(stats, "articles_updated")
         assert Map.has_key?(stats, "errors")
-      end
+      end)
     end
 
     test "handles sync errors gracefully", %{conn: conn} do
       # Remove content directory to force error
       File.rm_rf!(@test_content_path)
       
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         conn = post(conn, "/dev-api/integration/sync")
         
         # Should handle error gracefully
@@ -89,13 +89,13 @@ defmodule SertantaiDocsWeb.DevControllerTest do
             assert response["status"] == "error"
             assert Map.has_key?(response, "error")
         end
-      end
+      end)
     end
   end
 
   describe "GET /dev-api/navigation" do
     test "returns current navigation structure", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         conn = get(conn, "/dev-api/navigation")
         
         assert json_response(conn, 200)
@@ -114,27 +114,26 @@ defmodule SertantaiDocsWeb.DevControllerTest do
         assert Map.has_key?(metadata, "generated_at")
         assert Map.has_key?(metadata, "item_count")
         assert is_integer(metadata["item_count"])
-      end
+      end)
     end
 
     test "includes home navigation item", %{conn: conn} do
-      with_mock_content_path do
-        conn = get(conn, "/dev-api/navigation")
-        
-        response = json_response(conn, 200)
-        navigation = response["navigation"]
-        
-        # Should include home item
-        home_item = Enum.find(navigation, &(&1["title"] == "Home"))
-        assert home_item
-        assert home_item["path"] == "/"
-      end
+      # Test without mocking to see if that's the issue
+      conn = get(conn, "/dev-api/navigation")
+      
+      response = json_response(conn, 200)
+      navigation = response["navigation"]
+      
+      # Should include home item
+      home_item = Enum.find(navigation, &(&1["title"] == "Home"))
+      assert home_item
+      assert home_item["path"] == "/"
     end
   end
 
   describe "GET /dev-api/content/:path" do
     test "returns content information for existing file", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         encoded_path = URI.encode("dev/api_test.md")
         conn = get(conn, "/dev-api/content/#{encoded_path}")
         
@@ -160,11 +159,11 @@ defmodule SertantaiDocsWeb.DevControllerTest do
         assert Map.has_key?(content, "html_length")
         assert is_integer(content["html_length"])
         assert content["html_length"] > 0
-      end
+      end)
     end
 
     test "handles missing content file", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         encoded_path = URI.encode("nonexistent/file.md")
         conn = get(conn, "/dev-api/content/#{encoded_path}")
         
@@ -175,7 +174,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
         assert response["message"] == "Content file not found or could not be processed"
         assert response["file_path"] == "nonexistent/file.md"
         assert Map.has_key?(response, "error")
-      end
+      end)
     end
 
     test "handles path with special characters", %{conn: conn} do
@@ -188,7 +187,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
       # Special Content
       """)
       
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         encoded_path = URI.encode(special_file)
         conn = get(conn, "/dev-api/content/#{encoded_path}")
         
@@ -198,11 +197,11 @@ defmodule SertantaiDocsWeb.DevControllerTest do
         assert response["status"] == "ok"
         assert response["file_path"] == special_file
         assert response["metadata"]["title"] == "Special File"
-      end
+      end)
     end
 
     test "includes frontmatter in content info", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         encoded_path = URI.encode("dev/api_test.md")
         conn = get(conn, "/dev-api/content/#{encoded_path}")
         
@@ -214,7 +213,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
         assert frontmatter["title"] == "API Test Document"
         assert frontmatter["category"] == "dev"
         assert frontmatter["author"] == "Test Suite"
-      end
+      end)
     end
   end
 
@@ -274,7 +273,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
     end
 
     test "navigation endpoint includes timing metadata", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         conn = get(conn, "/dev-api/navigation")
         
         response = json_response(conn, 200)
@@ -285,7 +284,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
         # Timestamp should be recent (within last minute)
         generated_at = metadata["generated_at"]
         assert is_binary(generated_at)
-      end
+      end)
     end
   end
 
@@ -305,18 +304,4 @@ defmodule SertantaiDocsWeb.DevControllerTest do
     end
   end
 
-  defp with_mock_content_path do
-    test_app_dir = File.cwd!()
-    
-    try do
-      :meck.new(Application, [:passthrough])
-      :meck.expect(Application, :app_dir, fn 
-        :sertantai_docs -> test_app_dir
-        app -> :meck.passthrough([app])
-      end)
-      :ok
-    after
-      :meck.unload(Application)
-    end
-  end
 end

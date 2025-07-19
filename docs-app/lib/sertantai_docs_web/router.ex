@@ -29,7 +29,7 @@ defmodule SertantaiDocsWeb.Router do
   # end
 
   # Enable development routes and tools
-  if Application.compile_env(:sertantai_docs, :dev_routes) do
+  if Application.compile_env(:sertantai_docs, :dev_routes) || Mix.env() == :test do
     import Phoenix.LiveDashboard.Router
     
     scope "/dev" do
@@ -50,7 +50,7 @@ defmodule SertantaiDocsWeb.Router do
       get "/integration/status", DevController, :integration_status
       post "/integration/sync", DevController, :trigger_sync
       get "/navigation", DevController, :navigation
-      get "/content/:path", DevController, :content_info
+      get "/content/*path", DevController, :content_info
     end
   end
 end

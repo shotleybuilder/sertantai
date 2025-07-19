@@ -57,11 +57,10 @@ defmodule SertantaiDocs.MarkdownProcessor do
     try do
       html_content = 
         markdown
-        |> process_cross_references()
         |> MDEx.to_html!(mdex_options())
+        |> process_html_cross_references()
         |> inject_metadata(frontmatter)
         |> enhance_code_blocks()
-        |> process_html_cross_references()
       
       {:ok, html_content}
     rescue
@@ -108,57 +107,19 @@ defmodule SertantaiDocs.MarkdownProcessor do
     ]
   end
 
-  # Process Ash resource references and ExDoc links
-  defp process_cross_references(markdown) do
-    markdown
-    |> process_ash_references()
-    |> process_exdoc_references()
-    |> process_main_references()
-  end
 
-  defp process_ash_references(markdown) do
-    Regex.replace(~r/\[([^\]]+)\]\(ash:([^)]+)\)/, markdown, fn _, text, resource ->
-      ~s(<a href="/api/#{resource}.html" class="ash-resource-link">#{text}</a>)
-    end)
-  end
-
-  defp process_exdoc_references(markdown) do
-    Regex.replace(~r/\[([^\]]+)\]\(exdoc:([^)]+)\)/, markdown, fn _, text, module ->
-      ~s(<a href="/api/#{module}.html" class="exdoc-link">#{text}</a>)
-    end)
-  end
-
-  defp process_main_references(markdown) do
-    Regex.replace(~r/\[([^\]]+)\]\(main:([^)]+)\)/, markdown, fn _, text, path ->
-      ~s(<a href="#{get_main_app_url()}/#{path}" class="main-app-link">#{text}</a>)
-    end)
-  end
-
-  # Process cross-references that might have been escaped by MDEx
+  # Process cross-references that might have been escaped or processed by MDEx
   defp process_html_cross_references(html) do
+    main_app_url = get_main_app_url()
+    
     html
-    |> String.replace(~r/<!-- raw HTML omitted -->/, "")
-    |> process_html_ash_references()
-    |> process_html_exdoc_references()
-    |> process_html_main_references()
-  end
-
-  defp process_html_ash_references(html) do
-    Regex.replace(~r/\[([^\]]+)\]\(ash:([^)]+)\)/, html, fn _, text, resource ->
-      ~s(<a href="/api/#{resource}.html" class="ash-resource-link">#{text}</a>)
-    end)
-  end
-
-  defp process_html_exdoc_references(html) do
-    Regex.replace(~r/\[([^\]]+)\]\(exdoc:([^)]+)\)/, html, fn _, text, module ->
-      ~s(<a href="/api/#{module}.html" class="exdoc-link">#{text}</a>)
-    end)
-  end
-
-  defp process_html_main_references(html) do
-    Regex.replace(~r/\[([^\]]+)\]\(main:([^)]+)\)/, html, fn _, text, path ->
-      ~s(<a href="#{get_main_app_url()}/#{path}" class="main-app-link">#{text}</a>)
-    end)
+    |> String.replace("<!-- raw HTML omitted -->", "")
+    # Process HTML attributes with custom schemes (handles MDEx output with sourcepos attributes)
+    |> (&Regex.replace(~r/href="ash:([^"]+)"/, &1, ~s(href="/api/\\1.html" class="ash-resource-link"))).()
+    |> (&Regex.replace(~r/href="exdoc:([^"]+)"/, &1, ~s(href="/api/\\1.html" class="exdoc-link"))).()
+    |> (&Regex.replace(~r/href="main:([^"]+)"/, &1, fn _full, path ->
+         ~s(href="#{main_app_url}/#{path}" class="main-app-link")
+       end)).()
   end
 
   # Enhanced syntax highlighting for Elixir code blocks
@@ -269,8 +230,16 @@ defmodule SertantaiDocs.MarkdownProcessor do
         title = Map.get(metadata, "title", String.replace(page_name, "-", " ") |> String.capitalize())
         path = "/#{category}/#{page_name}"
         
-        Map.update(tree, category, [%{title: title, path: path, file_path: file_path}], fn pages ->
-          [%{title: title, path: path, file_path: file_path} | pages]
+        Map.update(tree, category, [%{title: title, path: path, file_path: file_path}], fn existing ->
+          case existing do
+            pages when is_list(pages) ->
+              [%{title: title, path: path, file_path: file_path} | pages]
+            %{} ->
+              # If there's an index page, create a proper list with both
+              [%{title: title, path: path, file_path: file_path}]
+            _ ->
+              [%{title: title, path: path, file_path: file_path}]
+          end
         end)
         
       {:error, _} ->
@@ -322,29 +291,45 @@ defmodule SertantaiDocs.MarkdownProcessor do
   # Convert the tree structure to navigation items
   defp convert_to_nav_items(tree) do
     tree
-    |> Enum.map(fn
-      {:root, pages} ->
-        Enum.map(pages, &(&1))
+    |> Enum.reduce([], fn
+      {:root, pages}, acc when is_list(pages) ->
+        acc ++ pages
         
-      {category, %{title: title, path: path, children: _}} when is_map_key(tree, category) ->
-        children = Map.get(tree, category, [])
-        |> Enum.filter(&is_map/1)
-        |> Enum.filter(&Map.has_key?(&1, :title))
-        |> Enum.sort_by(& &1.title)
+      {category, pages}, acc when is_list(pages) ->
+        category_string = to_string(category)
+        title = String.replace(category_string, "-", " ") |> String.capitalize()
         
-        %{title: title, path: path, children: children}
+        sorted_pages = 
+          if is_list(pages) and length(pages) > 0 do
+            Enum.sort_by(pages, fn page -> 
+              cond do
+                is_map(page) and Map.has_key?(page, :title) -> page[:title]
+                is_map(page) and Map.has_key?(page, "title") -> page["title"]
+                true -> ""
+              end
+            end)
+          else
+            []
+          end
         
-      {category, pages} when is_list(pages) ->
-        title = String.replace(category, "-", " ") |> String.capitalize()
-        children = Enum.sort_by(pages, & &1.title)
+        nav_item = %{title: title, path: "/#{category_string}", children: sorted_pages}
+        [nav_item | acc]
         
-        %{title: title, path: "/#{category}", children: children}
+      {_category, item}, acc when is_map(item) ->
+        # This is a category index page or single item
+        [item | acc]
         
-      {_category, item} when is_map(item) ->
-        item
+      _other, acc ->
+        # Skip any unmatched patterns
+        acc
     end)
-    |> List.flatten()
-    |> Enum.filter(&is_map/1)
-    |> Enum.sort_by(& &1.title)
+    |> Enum.reverse()
+    |> Enum.sort_by(fn item -> 
+      cond do
+        is_map(item) and Map.has_key?(item, :title) -> item[:title]
+        is_map(item) and Map.has_key?(item, "title") -> item["title"]
+        true -> ""
+      end
+    end)
   end
 end

@@ -57,6 +57,7 @@ defmodule SertantaiDocs.MixProject do
       
       # Markdown processing
       {:mdex, "~> 0.7.5"},
+      {:yaml_elixir, "~> 2.9"},
       
       # UI Components
       {:petal_components, "~> 3.0"},

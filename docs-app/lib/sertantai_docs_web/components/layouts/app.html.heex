@@ -1,0 +1,32 @@
+<div class="flex h-screen bg-white">
+  <!-- Sidebar Navigation -->
+  <.nav_sidebar 
+    items={SertantaiDocsWeb.Navigation.get_navigation_items()}
+    current_path={@conn.request_path}
+  />
+  
+  <!-- Main Content Area -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top Header -->
+    <header class="bg-white border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center">
+            <.search_box class="w-96" />
+          </div>
+          <div class="flex items-center gap-4">
+            <a href="https://github.com/yourusername/sertantai" class="text-gray-500 hover:text-gray-700">
+              <.icon name="hero-code-bracket" class="h-5 w-5" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto">
+      <.flash_group flash={@flash} />
+      {@inner_content}
+    </main>
+  </div>
+</div>

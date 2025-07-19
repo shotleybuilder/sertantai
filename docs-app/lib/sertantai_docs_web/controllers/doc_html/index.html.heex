@@ -1,0 +1,32 @@
+<div class="documentation-home">
+  <.doc_content>
+    <.doc_header 
+      title="Sertantai Documentation"
+      description="Comprehensive documentation for developers and users"
+      class="text-center"
+    />
+    
+    <div class="prose prose-lg max-w-none">
+      <%= raw @content %>
+    </div>
+    
+    <!-- Quick Links Section -->
+    <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-gray-50 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">Developer Documentation</h3>
+        <p class="text-gray-600 mb-4">Setup guides, architecture overview, and development workflows.</p>
+        <.link navigate="/dev" class="text-blue-600 hover:text-blue-800 font-medium">
+          View Developer Docs →
+        </.link>
+      </div>
+      
+      <div class="bg-gray-50 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">User Guide</h3>
+        <p class="text-gray-600 mb-4">Getting started guides and feature documentation for end users.</p>
+        <.link navigate="/user" class="text-blue-600 hover:text-blue-800 font-medium">
+          View User Guide →
+        </.link>
+      </div>
+    </div>
+  </.doc_content>
+</div>

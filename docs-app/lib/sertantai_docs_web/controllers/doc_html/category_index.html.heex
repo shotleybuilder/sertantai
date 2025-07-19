@@ -1,0 +1,13 @@
+<div class="category-index">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <nav class="breadcrumb mb-6">
+      <.link navigate="/" class="text-blue-600 hover:text-blue-800">Documentation</.link>
+      <span class="mx-2">/</span>
+      <span class="text-gray-600"><%= String.capitalize(@category) %></span>
+    </nav>
+    
+    <div class="prose prose-lg max-w-none">
+      <%= raw @content %>
+    </div>
+  </div>
+</div>

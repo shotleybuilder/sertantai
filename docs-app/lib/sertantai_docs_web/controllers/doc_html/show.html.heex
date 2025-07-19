@@ -1,0 +1,23 @@
+<div class="documentation-page">
+  <.doc_content>
+    <.breadcrumb 
+      items={[
+        %{title: "Documentation", path: "/"},
+        %{title: String.capitalize(@category), path: "/#{@category}"},
+        %{title: @page, path: nil}
+      ]}
+      class="mb-6"
+    />
+    
+    <.doc_header 
+      title={@metadata["title"] || String.capitalize(@page)}
+      description={@metadata["description"]}
+      category={@category}
+      tags={@metadata["tags"] || []}
+    />
+    
+    <article class="prose prose-lg max-w-none">
+      <%= raw @content %>
+    </article>
+  </.doc_content>
+</div>

@@ -14,21 +14,8 @@ defmodule SertantaiDocsWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", SertantaiDocsWeb do
-    pipe_through :browser
-
-    # Documentation routes
-    get "/", DocController, :index
-    get "/:category/:page", DocController, :show
-    get "/:category", DocController, :category_index
-  end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", SertantaiDocsWeb do
-  #   pipe_through :api
-  # end
-
   # Enable development routes and tools
+  # These must come BEFORE catch-all routes to avoid being captured
   if Application.compile_env(:sertantai_docs, :dev_routes) || Mix.env() == :test do
     import Phoenix.LiveDashboard.Router
     
@@ -53,4 +40,18 @@ defmodule SertantaiDocsWeb.Router do
       get "/content/*path", DevController, :content_info
     end
   end
+
+  scope "/", SertantaiDocsWeb do
+    pipe_through :browser
+
+    # Documentation routes
+    get "/", DocController, :index
+    get "/:category/:page", DocController, :show
+    get "/:category", DocController, :category_index
+  end
+
+  # Other scopes may use custom stacks.
+  # scope "/api", SertantaiDocsWeb do
+  #   pipe_through :api
+  # end
 end

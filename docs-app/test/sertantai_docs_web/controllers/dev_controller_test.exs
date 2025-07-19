@@ -117,7 +117,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
       end)
     end
 
-    test "includes home navigation item", %{conn: conn} do
+    test "includes home navigation item - without mocking", %{conn: conn} do
       # Test without mocking to see if that's the issue
       conn = get(conn, "/dev-api/navigation")
       

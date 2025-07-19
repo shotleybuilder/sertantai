@@ -57,40 +57,40 @@ defmodule SertantaiDocsWeb.DocControllerTest do
 
   describe "GET /" do
     test "renders the documentation home page", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         conn = get(conn, ~p"/")
         
         assert html_response(conn, 200)
         response_body = html_response(conn, 200)
         assert response_body =~ "Welcome to Sertantai Docs"
         assert response_body =~ "documentation-home"
-      end
+      end)
     end
 
     test "handles missing index.md gracefully", %{conn: conn} do
       # Remove the index file
       File.rm!(Path.join(@test_content_path, "index.md"))
       
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         conn = get(conn, ~p"/")
         
         assert html_response(conn, 200)
         response_body = html_response(conn, 200)
         assert response_body =~ "Documentation not found"
-      end
+      end)
     end
   end
 
   describe "GET /:category" do
     test "renders category index page", %{conn: conn} do
-      with_mock_content_path do
+      with_mock_content_path(fn ->
         conn = get(conn, ~p"/dev")
         
         assert html_response(conn, 200)
         response_body = html_response(conn, 200)
         assert response_body =~ "Developer Documentation"
         assert response_body =~ "category-index"
-      end
+      end)
     end
 
     test "handles missing category index", %{conn: conn} do

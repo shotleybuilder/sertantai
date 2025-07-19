@@ -37,7 +37,7 @@ defmodule SertantaiDocs.MixProject do
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.0"},
-      {:phoenix_live_dashboard, "~> 0.8.3", only: :dev},
+      {:phoenix_live_dashboard, "~> 0.8.3", only: [:dev, :test]},
       {:floki, ">= 0.30.0", only: :test},
       {:meck, "~> 0.9.2", only: :test},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
@@ -64,6 +64,7 @@ defmodule SertantaiDocs.MixProject do
       # Core dependencies
       {:swoosh, "~> 1.5"},
       {:finch, "~> 0.13"},
+      {:file_system, "~> 1.0", only: [:dev, :test]},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},

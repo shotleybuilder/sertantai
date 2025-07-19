@@ -61,6 +61,7 @@ defmodule SertantaiDocs.MarkdownProcessor do
         |> MDEx.to_html!(mdex_options())
         |> inject_metadata(frontmatter)
         |> enhance_code_blocks()
+        |> process_html_cross_references()
       
       {:ok, html_content}
     rescue
@@ -110,13 +111,52 @@ defmodule SertantaiDocs.MarkdownProcessor do
   # Process Ash resource references and ExDoc links
   defp process_cross_references(markdown) do
     markdown
-    |> String.replace(~r/\[([^\]]+)\]\(ash:([^)]+)\)/, fn _, text, resource ->
+    |> process_ash_references()
+    |> process_exdoc_references()
+    |> process_main_references()
+  end
+
+  defp process_ash_references(markdown) do
+    Regex.replace(~r/\[([^\]]+)\]\(ash:([^)]+)\)/, markdown, fn _, text, resource ->
       ~s(<a href="/api/#{resource}.html" class="ash-resource-link">#{text}</a>)
     end)
-    |> String.replace(~r/\[([^\]]+)\]\(exdoc:([^)]+)\)/, fn _, text, module ->
+  end
+
+  defp process_exdoc_references(markdown) do
+    Regex.replace(~r/\[([^\]]+)\]\(exdoc:([^)]+)\)/, markdown, fn _, text, module ->
       ~s(<a href="/api/#{module}.html" class="exdoc-link">#{text}</a>)
     end)
-    |> String.replace(~r/\[([^\]]+)\]\(main:([^)]+)\)/, fn _, text, path ->
+  end
+
+  defp process_main_references(markdown) do
+    Regex.replace(~r/\[([^\]]+)\]\(main:([^)]+)\)/, markdown, fn _, text, path ->
+      ~s(<a href="#{get_main_app_url()}/#{path}" class="main-app-link">#{text}</a>)
+    end)
+  end
+
+  # Process cross-references that might have been escaped by MDEx
+  defp process_html_cross_references(html) do
+    html
+    |> String.replace(~r/<!-- raw HTML omitted -->/, "")
+    |> process_html_ash_references()
+    |> process_html_exdoc_references()
+    |> process_html_main_references()
+  end
+
+  defp process_html_ash_references(html) do
+    Regex.replace(~r/\[([^\]]+)\]\(ash:([^)]+)\)/, html, fn _, text, resource ->
+      ~s(<a href="/api/#{resource}.html" class="ash-resource-link">#{text}</a>)
+    end)
+  end
+
+  defp process_html_exdoc_references(html) do
+    Regex.replace(~r/\[([^\]]+)\]\(exdoc:([^)]+)\)/, html, fn _, text, module ->
+      ~s(<a href="/api/#{module}.html" class="exdoc-link">#{text}</a>)
+    end)
+  end
+
+  defp process_html_main_references(html) do
+    Regex.replace(~r/\[([^\]]+)\]\(main:([^)]+)\)/, html, fn _, text, path ->
       ~s(<a href="#{get_main_app_url()}/#{path}" class="main-app-link">#{text}</a>)
     end)
   end
@@ -159,9 +199,15 @@ defmodule SertantaiDocs.MarkdownProcessor do
         # Add file system metadata
         file_stat = File.stat!(full_path)
         
+        # Convert mtime to DateTime - it's already in the right format from File.stat
+        last_modified = case NaiveDateTime.from_erl(file_stat.mtime) do
+          {:ok, naive_dt} -> DateTime.from_naive!(naive_dt, "Etc/UTC")
+          {:error, _} -> DateTime.utc_now()
+        end
+        
         metadata = Map.merge(frontmatter, %{
           "file_path" => file_path,
-          "last_modified" => file_stat.mtime,
+          "last_modified" => last_modified,
           "size" => file_stat.size
         })
         

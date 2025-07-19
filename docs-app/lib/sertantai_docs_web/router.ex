@@ -30,9 +30,8 @@ defmodule SertantaiDocsWeb.Router do
 
   # Enable development routes and tools
   if Application.compile_env(:sertantai_docs, :dev_routes) do
-    # Import Phoenix.LiveDashboard.Router
     import Phoenix.LiveDashboard.Router
-
+    
     scope "/dev" do
       pipe_through :browser
 

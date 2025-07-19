@@ -10,7 +10,8 @@ Welcome to the Sertantai developer documentation. This section contains technica
 
 ## Quick Links
 
-- [📖 How the Documentation System Works](documentation-system.md) - **Start here for contributors**
+- [📖 How the Documentation System Works](/dev/documentation-system) - **Start here for contributors**
+- [🎨 MDEx Custom Theming Guide](/dev/mdex-theming-guide) - **How to customize syntax highlighting**
 - [Setup Guide](setup.md)
 - [Architecture Overview](architecture.md)
 - [API Reference](/api/)
@@ -24,5 +25,6 @@ This documentation covers:
 - Testing strategies
 - Deployment guides
 - API documentation
+- **Markdown processing and theming** - How to customize MDEx for syntax highlighting
 
 For user-facing documentation, see the [User Guide](../user/index.md).

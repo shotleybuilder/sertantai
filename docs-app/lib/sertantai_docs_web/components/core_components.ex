@@ -755,11 +755,58 @@ defmodule SertantaiDocsWeb.CoreComponents do
       "prose prose-lg max-w-none",
       "prose-headings:text-gray-900 prose-headings:font-semibold",
       "prose-code:text-pink-600 prose-code:bg-gray-100 prose-code:rounded prose-code:px-1",
-      "prose-pre:bg-gray-900 prose-pre:text-gray-100",
       "prose-a:text-blue-600 hover:prose-a:text-blue-800",
       @class
     ]}>
       <%= render_slot(@inner_block) %>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a code block with syntax highlighting, copy functionality, and language header.
+  """
+  attr :content, :string, required: true
+  attr :language, :string, default: "text"
+  attr :filename, :string, default: nil
+  attr :class, :string, default: ""
+  attr :id, :string, default: nil
+
+  def code_block(assigns) do
+    ~H"""
+    <div class={[
+      "relative group mb-4 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden",
+      @class
+    ]} id={@id}>
+      <!-- Header with language and copy button -->
+      <div class="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-200">
+        <div class="flex items-center space-x-2">
+          <.icon name="hero-code-bracket" class="h-4 w-4 text-gray-500" />
+          <span class="text-sm font-medium text-gray-700 capitalize">
+            <%= @language %>
+          </span>
+          <%= if @filename do %>
+            <span class="text-sm text-gray-500">•</span>
+            <span class="text-sm text-gray-600"><%= @filename %></span>
+          <% end %>
+        </div>
+        
+        <!-- Copy button -->
+        <button 
+          type="button"
+          class="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors"
+          onclick={"copyToClipboard('#{@id || "code-block"}')"}
+          title="Copy to clipboard"
+        >
+          <.icon name="hero-document-duplicate" class="h-3 w-3" />
+          <span>Copy</span>
+        </button>
+      </div>
+      
+      <!-- Code content -->
+      <div class="relative">
+        <pre class="p-4 text-sm text-gray-800 overflow-x-auto"><code id={"#{@id || "code-block"}-content"} class={"language-#{@language}"}><%= @content %></code></pre>
+      </div>
     </div>
     """
   end

@@ -3,3 +3,9 @@
 @import "tailwindcss/utilities";
 
 /* This file is for your main application CSS */
+
+/* Custom styling for code blocks to override MDEx inline styles */
+.sertantai-code-block {
+  background-color: #f9fafb !important; /* Tailwind bg-gray-50 equivalent */
+  color: #1f2937 !important; /* Tailwind text-gray-800 equivalent */
+}

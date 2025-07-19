@@ -42,3 +42,63 @@ liveSocket.connect()
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
 
+// Code block copy functionality
+window.copyToClipboard = function(elementId) {
+  const codeElement = document.getElementById(elementId + '-content');
+  if (!codeElement) {
+    console.error('Code element not found:', elementId + '-content');
+    return;
+  }
+  
+  const text = codeElement.textContent || codeElement.innerText;
+  
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      showCopyFeedback(elementId);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      fallbackCopyTextToClipboard(text, elementId);
+    });
+  } else {
+    fallbackCopyTextToClipboard(text, elementId);
+  }
+}
+
+function fallbackCopyTextToClipboard(text, elementId) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  
+  try {
+    const successful = document.execCommand('copy');
+    if (successful) {
+      showCopyFeedback(elementId);
+    }
+  } catch (err) {
+    console.error('Fallback: Could not copy text: ', err);
+  }
+  
+  document.body.removeChild(textArea);
+}
+
+function showCopyFeedback(elementId) {
+  const button = document.querySelector(`[onclick="copyToClipboard('${elementId}')"]`);
+  if (button) {
+    const originalText = button.innerHTML;
+    button.innerHTML = '<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Copied!</span>';
+    button.classList.add('text-green-600');
+    
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.classList.remove('text-green-600');
+    }, 2000);
+  }
+}
+

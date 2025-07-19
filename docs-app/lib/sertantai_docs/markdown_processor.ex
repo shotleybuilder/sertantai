@@ -55,12 +55,15 @@ defmodule SertantaiDocs.MarkdownProcessor do
 
   defp process_markdown(markdown, frontmatter) do
     try do
+      # Extract code block languages before MDEx processing
+      code_block_languages = extract_code_block_languages(markdown)
+      
       html_content = 
         markdown
         |> MDEx.to_html!(mdex_options())
         |> process_html_cross_references()
         |> inject_metadata(frontmatter)
-        |> enhance_code_blocks()
+        |> enhance_code_blocks(code_block_languages)
       
       {:ok, html_content}
     rescue
@@ -103,6 +106,13 @@ defmodule SertantaiDocs.MarkdownProcessor do
         github_pre_lang: true,
         hardbreaks: false,
         sourcepos: true
+      ],
+      # Use github_light theme with custom styling
+      syntax_highlight: [
+        formatter: {:html_inline, 
+          theme: "github_light",
+          pre_class: "sertantai-code-block"
+        }
       ]
     ]
   end
@@ -122,12 +132,97 @@ defmodule SertantaiDocs.MarkdownProcessor do
        end)).()
   end
 
-  # Enhanced syntax highlighting for Elixir code blocks
-  defp enhance_code_blocks(html) do
-    # Add custom classes for better styling with Petal Components
-    html
-    |> String.replace(~r/<pre><code class="language-elixir">/, ~s(<pre class="language-elixir"><code class="language-elixir">))
-    |> String.replace(~r/<pre><code class="language-([^"]+)">/, ~s(<pre class="language-\\1"><code class="language-\\1">))
+  # Extract code block languages from original markdown before MDEx processing
+  defp extract_code_block_languages(markdown) do
+    Regex.scan(~r/```([a-zA-Z]*)\n(.*?)\n```/s, markdown)
+    |> Enum.map(fn [_full, language, content] ->
+      clean_language = case String.trim(language) do
+        "" -> "text"
+        lang -> lang
+      end
+      {clean_language, String.trim(content)}
+    end)
+  end
+
+  # Enhanced code blocks with custom styling and copy functionality
+  defp enhance_code_blocks(html, code_block_languages) do
+    # Replace code blocks with our custom component
+    replace_code_blocks_with_component(html, code_block_languages)
+  end
+
+  defp replace_code_blocks_with_component(html, code_block_languages) do
+    # Convert languages list to a more usable format
+    language_map = code_block_languages
+    |> Enum.with_index()
+    |> Map.new(fn {{language, _content}, index} -> {index, language} end)
+    
+    # Track which code block we're processing
+    {:ok, agent_pid} = Agent.start_link(fn -> 0 end)
+    
+    try do
+      # Match code blocks and wrap them with our component
+      result = Regex.replace(
+        ~r/<pre([^>]*class="[^"]*sertantai-code-block[^"]*"[^>]*)><code[^>]*>(.*?)<\/code><\/pre>/s,
+        html,
+        fn _full_match, pre_attributes, content ->
+          # Get current block index and increment
+          current_index = Agent.get_and_update(agent_pid, fn count -> 
+            {count, count + 1} 
+          end)
+          
+          # Generate unique ID for this code block
+          block_id = "code-block-#{:crypto.hash(:md5, content) |> Base.encode16(case: :lower) |> String.slice(0, 8)}"
+          
+          # Get language from our pre-extracted list
+          language_display = Map.get(language_map, current_index, "text")
+          
+          # Clean up the content but preserve syntax highlighting
+          cleaned_content = content
+            # Remove line wrapper spans but keep syntax highlighting spans
+            |> String.replace(~r/<span class="line"[^>]*>/, "")
+            |> String.replace(~r/<\/span>\n<\/span>/, "</span>\n")
+            |> String.replace(~r/<\/span>$/, "")
+            # Remove data-line attributes 
+            |> String.replace(~r/data-line="[^"]*"\s*/, "")
+            |> String.trim()
+          
+          # Wrap the MDEx output with our custom header and container
+          render_enhanced_code_block(pre_attributes, cleaned_content, language_display, block_id)
+        end
+      )
+      
+      Agent.stop(agent_pid)
+      result
+    rescue
+      e ->
+        Agent.stop(agent_pid)
+        reraise e, __STACKTRACE__
+    end
+  end
+
+
+  defp render_enhanced_code_block(pre_attributes, content, language, block_id) do
+    """
+    <div class="relative group mb-4 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden" id="#{block_id}">
+      <div class="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-200">
+        <div class="flex items-center space-x-2">
+          <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+          </svg>
+          <span class="text-sm font-medium text-gray-700 capitalize">#{language}</span>
+        </div>
+        <button type="button" class="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors" onclick="copyToClipboard('#{block_id}')" title="Copy to clipboard">
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+          </svg>
+          <span>Copy</span>
+        </button>
+      </div>
+      <div class="relative">
+        <pre#{pre_attributes}><code id="#{block_id}-content">#{content}</code></pre>
+      </div>
+    </div>
+    """
   end
 
   defp inject_metadata(html, frontmatter) do

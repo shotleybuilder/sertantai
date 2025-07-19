@@ -10,6 +10,7 @@ Welcome to the Sertantai developer documentation. This section contains technica
 
 ## Quick Links
 
+- [📖 How the Documentation System Works](documentation-system.md) - **Start here for contributors**
 - [Setup Guide](setup.md)
 - [Architecture Overview](architecture.md)
 - [API Reference](/api/)

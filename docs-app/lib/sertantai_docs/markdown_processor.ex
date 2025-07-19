@@ -233,11 +233,16 @@ defmodule SertantaiDocs.MarkdownProcessor do
         Map.update(tree, category, [%{title: title, path: path, file_path: file_path}], fn existing ->
           case existing do
             pages when is_list(pages) ->
+              # Add to existing list of pages
               [%{title: title, path: path, file_path: file_path} | pages]
-            %{} ->
-              # If there's an index page, create a proper list with both
-              [%{title: title, path: path, file_path: file_path}]
+            %{children: children} = category_map when is_list(children) ->
+              # Update category map with new page in children
+              Map.put(category_map, :children, [%{title: title, path: path, file_path: file_path} | children])
+            %{} = category_map ->
+              # Convert old category map to include children
+              Map.put(category_map, :children, [%{title: title, path: path, file_path: file_path}])
             _ ->
+              # Fallback - create list
               [%{title: title, path: path, file_path: file_path}]
           end
         end)
@@ -253,8 +258,18 @@ defmodule SertantaiDocs.MarkdownProcessor do
         title = Map.get(metadata, "title", String.capitalize(category))
         
         Map.update(tree, category, %{title: title, path: "/#{category}", children: []}, fn existing ->
-          Map.put(existing, :title, title)
-          |> Map.put(:path, "/#{category}")
+          case existing do
+            pages when is_list(pages) ->
+              # Convert list of pages to proper category structure with children
+              %{title: title, path: "/#{category}", children: pages}
+            %{} = category_map ->
+              # Update existing category map
+              Map.put(category_map, :title, title)
+              |> Map.put(:path, "/#{category}")
+            _ ->
+              # Fallback for any other case
+              %{title: title, path: "/#{category}", children: []}
+          end
         end)
         
       {:error, _} ->

@@ -219,13 +219,12 @@ defmodule SertantaiDocsWeb.DevControllerTest do
 
   describe "error handling" do
     test "handles malformed requests gracefully", %{conn: conn} do
-      # Test with invalid JSON in POST body
-      conn = conn
+      # Test with invalid JSON in POST body - this should raise a parse error
+      assert_raise Plug.Parsers.ParseError, fn ->
+        conn
         |> put_req_header("content-type", "application/json")
         |> post("/dev-api/integration/sync", "invalid json")
-      
-      # Should not crash the server
-      assert response(conn, 200) || response(conn, 400) || response(conn, 422)
+      end
     end
 
     test "handles missing routes", %{conn: conn} do
@@ -290,7 +289,18 @@ defmodule SertantaiDocsWeb.DevControllerTest do
 
   # Helper function to mock content path
   defp with_mock_content_path(fun) do
-    test_app_dir = File.cwd!()
+    # Create a directory structure that matches what MarkdownProcessor expects
+    # MarkdownProcessor looks for: Application.app_dir(:sertantai_docs)/priv/static/docs/
+    test_app_dir = Path.join(File.cwd!(), "test_app_mock")
+    docs_dir = Path.join([test_app_dir, "priv", "static", "docs"])
+    
+    # Create the expected directory structure and copy test content
+    File.mkdir_p!(docs_dir)
+    
+    # Copy test content files to the expected location
+    if File.exists?(@test_content_path) do
+      File.cp_r!(@test_content_path, docs_dir)
+    end
     
     try do
       :meck.new(Application, [:passthrough])
@@ -301,6 +311,7 @@ defmodule SertantaiDocsWeb.DevControllerTest do
       fun.()
     after
       :meck.unload(Application)
+      File.rm_rf!(test_app_dir)
     end
   end
 

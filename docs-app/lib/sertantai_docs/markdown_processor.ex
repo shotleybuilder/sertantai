@@ -53,6 +53,29 @@ defmodule SertantaiDocs.MarkdownProcessor do
     end
   end
 
+  @doc """
+  Process markdown content with cross-reference support.
+  
+  This integrates with the CrossRef system to process cross-references
+  while maintaining all MDEx features.
+  """
+  def process_with_cross_refs(markdown, options \\ %{}) when is_binary(markdown) do
+    alias SertantaiDocs.CrossRef.Processor
+    
+    # Process cross-references first
+    cross_ref_result = Processor.process_cross_references(markdown, options)
+    
+    # For now, TOC extraction is not implemented
+    # In a real implementation, we would extract TOC from the HTML
+    toc = nil
+    
+    %{
+      html: cross_ref_result.html,
+      toc: toc,
+      cross_refs: cross_ref_result.cross_refs
+    }
+  end
+
   defp process_markdown(markdown, frontmatter) do
     try do
       # Extract code block languages before MDEx processing

@@ -39,10 +39,21 @@ defmodule SertantaiDocsWeb.Router do
       get "/navigation", DevController, :navigation
       get "/content/*path", DevController, :content_info
     end
+    
+    # Test routes for component testing
+    scope "/test", SertantaiDocsWeb do
+      pipe_through :browser
+      
+      live "/cross-ref-preview", Live.CrossRefPreviewTestLive
+      live "/page", Live.CrossRefPreviewTestLive
+    end
   end
 
   scope "/", SertantaiDocsWeb do
     pipe_through :browser
+
+    # Search
+    live "/search", SearchLive
 
     # Documentation routes
     get "/", DocController, :index

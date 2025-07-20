@@ -90,6 +90,56 @@ defmodule SertantaiDocsWeb.PageRenderingTest do
     end
   end
 
+  describe "navigation links validation" do
+    test "dev category QuickLinks point to correct URLs", %{conn: conn} do
+      conn = get(conn, "/dev")
+      
+      assert response(conn, 200)
+      response_body = response(conn, 200)
+      
+      # The QuickLink for documentation system should point to /dev/documentation-system
+      # NOT to /documentation-system.md
+      assert response_body =~ ~s(href="/dev/documentation-system")
+      refute String.contains?(response_body, ~s(href="/documentation-system.md"))
+      refute String.contains?(response_body, ~s(href="documentation-system.md"))
+    end
+
+    test "QuickLink URLs are actually accessible", %{conn: conn} do
+      # First get the dev page
+      conn = get(conn, "/dev")
+      response_body = response(conn, 200)
+      
+      # Extract the documentation system link
+      assert response_body =~ "documentation-system"
+      
+      # The link should work when accessed
+      conn = get(conn, "/dev/documentation-system")
+      assert response(conn, 200)
+      
+      response_body = response(conn, 200)
+      assert response_body =~ "How the Documentation System Works"
+      refute String.contains?(response_body, "Coming soon")
+    end
+
+    test "wrong URL shows fallback content in main area", %{conn: conn} do
+      # Test the wrong URL that user reported
+      conn = get(conn, "/documentation-system.md")
+      
+      # This URL constructs file_path "dev/documentation-system.md.md" which shouldn't exist
+      # It should show fallback content in the main content area
+      response_body = response(conn, conn.status)
+      
+      # The main content area should show "Coming soon" not the actual documentation content
+      # (The sidebar navigation might contain links, but main content should be fallback)
+      assert response_body =~ "Coming soon"
+      
+      # The main content should NOT contain the actual documentation content like:
+      # "This guide explains how the Sertantai documentation system"
+      refute String.contains?(response_body, "This guide explains how the Sertantai documentation system"), 
+        "Main content should show fallback, not actual documentation content"
+    end
+  end
+
   describe "template variable validation" do
     test "all required template variables are provided to index template", %{conn: conn} do
       # This will fail if we're missing required assigns

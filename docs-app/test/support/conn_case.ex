@@ -31,7 +31,16 @@ defmodule SertantaiDocsWeb.ConnCase do
     end
   end
 
-  setup _tags do
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+  setup tags do
+    conn = Phoenix.ConnTest.build_conn()
+    
+    # Initialize session for LiveView tests if needed
+    conn = if tags[:live_test] do
+      Plug.Test.init_test_session(conn, %{})
+    else
+      conn
+    end
+    
+    {:ok, conn: conn}
   end
 end

@@ -74,7 +74,7 @@ defmodule SertantaiDocs.Navigation.Scanner do
   defp process_file(file_path) do
     try do
       content = File.read!(file_path)
-      {frontmatter, _markdown} = extract_frontmatter(content)
+      {frontmatter, markdown} = extract_frontmatter(content)
       
       # Generate defaults for missing frontmatter
       title = frontmatter["title"] || derive_title_from_path(file_path)
@@ -91,7 +91,8 @@ defmodule SertantaiDocs.Navigation.Scanner do
         file_path: relative_file_path,
         category: category,
         priority: priority,
-        tags: tags
+        tags: tags,
+        content: markdown  # Include content for search indexing
       }
     rescue
       _ ->

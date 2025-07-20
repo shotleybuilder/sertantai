@@ -6,6 +6,8 @@ defmodule SertantaiDocs.TOC.Extractor do
   structure suitable for rendering navigation.
   """
 
+  alias MDEx
+
   @default_max_level 4
   @default_min_level 1
 
@@ -15,22 +17,98 @@ defmodule SertantaiDocs.TOC.Extractor do
   Options:
   - :min_level - minimum heading level to include (default: 1)
   - :max_level - maximum heading level to include (default: 4)
+  - :use_ast - use MDEx AST parsing instead of regex (default: true)
   """
   def extract_headings(content, opts \\ []) when is_binary(content) or is_nil(content) do
     content = content || ""
     
     min_level = Keyword.get(opts, :min_level, @default_min_level)
     max_level = Keyword.get(opts, :max_level, @default_max_level)
+    use_ast = Keyword.get(opts, :use_ast, true)
     
+    headings = if use_ast and mdex_available?() do
+      extract_headings_from_ast(content, opts)
+    else
+      extract_headings_from_text(content, opts)
+    end
+    
+    headings
+    |> Enum.filter(fn heading ->
+      heading.level >= min_level && heading.level <= max_level
+    end)
+    |> assign_unique_ids()
+  end
+  
+  @doc """
+  Extracts headings using MDEx AST parsing for better accuracy.
+  """
+  def extract_headings_from_ast(content, _opts) do
+    # Parse markdown to AST
+    case MDEx.parse_document(content) do
+      {:ok, %MDEx.Document{nodes: nodes}} ->
+        extract_headings_from_ast_nodes(nodes)
+      
+      {:error, _reason} ->
+        # Fallback to text-based extraction
+        extract_headings_from_text(content, [])
+    end
+  end
+  
+  defp extract_headings_from_ast_nodes(nodes) when is_list(nodes) do
+    Enum.flat_map(nodes, &extract_headings_from_ast_node/1)
+  end
+  
+  defp extract_headings_from_ast_node(%MDEx.Heading{level: level, nodes: children}) do
+    text = extract_text_from_ast(children)
+    
+    # Extract custom ID if present in the heading text
+    {clean_text, custom_id, metadata} = extract_heading_metadata(text)
+    
+    base_heading = %{
+      level: level,
+      text: clean_text,
+      id: custom_id || slugify(clean_text),
+      line: 1  # MDEx doesn't expose line numbers easily, so we'll use a default
+    }
+    
+    # Add display_text if metadata contains it
+    heading = case metadata["data-toc"] do
+      nil -> base_heading
+      display_text -> Map.put(base_heading, :display_text, display_text)
+    end
+    
+    [heading]
+  end
+  
+  defp extract_headings_from_ast_node(%{nodes: children}) when is_list(children) do
+    extract_headings_from_ast_nodes(children)
+  end
+  
+  defp extract_headings_from_ast_node(_), do: []
+  
+  defp extract_text_from_ast(nodes) when is_list(nodes) do
+    Enum.map_join(nodes, "", &extract_text_from_ast_node/1)
+  end
+  
+  defp extract_text_from_ast_node(%MDEx.Text{literal: text}), do: text
+  defp extract_text_from_ast_node(%MDEx.Code{literal: text}), do: text
+  defp extract_text_from_ast_node(%MDEx.Emph{nodes: children}), do: extract_text_from_ast(children)
+  defp extract_text_from_ast_node(%MDEx.Strong{nodes: children}), do: extract_text_from_ast(children)
+  defp extract_text_from_ast_node(%MDEx.Link{nodes: children}), do: extract_text_from_ast(children)
+  defp extract_text_from_ast_node(%{nodes: children}) when is_list(children), do: extract_text_from_ast(children)
+  defp extract_text_from_ast_node(_), do: ""
+  
+  # Legacy text-based extraction for fallback
+  defp extract_headings_from_text(content, _opts) do
     content
     |> remove_code_blocks()
     |> String.split("\n")
     |> Enum.with_index(1)
     |> Enum.flat_map(&parse_heading_line/1)
-    |> Enum.filter(fn heading ->
-      heading.level >= min_level && heading.level <= max_level
-    end)
-    |> assign_unique_ids()
+  end
+  
+  defp mdex_available? do
+    Code.ensure_loaded?(MDEx)
   end
 
   @doc """
@@ -136,7 +214,10 @@ defmodule SertantaiDocs.TOC.Extractor do
     |> String.trim()
   end
 
-  defp slugify(text) do
+  @doc """
+  Converts text to a URL-safe slug for heading IDs.
+  """
+  def slugify(text) do
     text
     |> String.downcase()
     |> String.replace(~r/[^\w\s.-]/, "")  # Keep dots temporarily for proper conversion

@@ -83,7 +83,7 @@ defmodule SertantaiDocs.MarkdownProcessor do
     end
   end
 
-  defp mdex_options do
+  def mdex_options do
     [
       extension: [
         strikethrough: true,
@@ -93,7 +93,8 @@ defmodule SertantaiDocs.MarkdownProcessor do
         tasklist: true,
         footnotes: true,
         description_lists: true,
-        front_matter_delimiter: "---"
+        front_matter_delimiter: "---",
+        header_ids: ""  # Enable header IDs with empty prefix
       ],
       parse: [
         smart: true,

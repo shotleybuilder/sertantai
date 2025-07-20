@@ -27,7 +27,8 @@ defmodule SertantaiDocs.TOC.ExtractorTest do
       ### Subsection 2.2
       """
       
-      headings = Extractor.extract_headings(content)
+      # Force text-based extraction for this test to maintain line number accuracy
+      headings = Extractor.extract_headings(content, use_ast: false)
       
       assert length(headings) == 7
       

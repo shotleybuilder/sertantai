@@ -6,6 +6,7 @@ defmodule SertantaiDocs.TOC.Generator do
   locations, and provide complete document processing.
   """
 
+  alias MDEx
   alias SertantaiDocs.TOC.Extractor
 
   @doc """
@@ -163,13 +164,7 @@ defmodule SertantaiDocs.TOC.Generator do
   end
 
   defp slugify(text) do
-    text
-    |> String.downcase()
-    |> String.replace(~r/[^\w\s.-]/, "")  # Keep dots temporarily for proper conversion
-    |> String.replace(".", "-")           # Convert dots to hyphens explicitly
-    |> String.replace(~r/\s+/, "-")       # Convert spaces to hyphens
-    |> String.replace(~r/-+/, "-")        # Collapse multiple hyphens
-    |> String.trim("-")                   # Remove leading/trailing hyphens
+    Extractor.slugify(text)
   end
 
   defp make_unique_id(base_id, seen_ids) do
@@ -335,34 +330,44 @@ defmodule SertantaiDocs.TOC.Generator do
   end
 
   defp markdown_to_html(markdown) do
-    # Simplified markdown to HTML conversion
-    # In real implementation, would use MDEx
-    lines = String.split(markdown, "\n")
-    
-    lines
-    |> Enum.map(fn line ->
-      cond do
-        Regex.match?(~r/^###### (.+)$/, line) ->
-          String.replace(line, ~r/^###### (.+)$/, "<h6>\\1</h6>")
-        Regex.match?(~r/^##### (.+)$/, line) ->
-          String.replace(line, ~r/^##### (.+)$/, "<h5>\\1</h5>")
-        Regex.match?(~r/^#### (.+)$/, line) ->
-          String.replace(line, ~r/^#### (.+)$/, "<h4>\\1</h4>")
-        Regex.match?(~r/^### (.+)$/, line) ->
-          String.replace(line, ~r/^### (.+)$/, "<h3>\\1</h3>")
-        Regex.match?(~r/^## (.+)$/, line) ->
-          String.replace(line, ~r/^## (.+)$/, "<h2>\\1</h2>")
-        Regex.match?(~r/^# (.+)$/, line) ->
-          String.replace(line, ~r/^# (.+)$/, "<h1>\\1</h1>")
-        String.trim(line) == "" ->
-          ""
-        String.contains?(line, "<!-- TOC") ->
-          line  # Preserve TOC placeholders as-is
-        true ->
-          "<p>#{line}</p>"
-      end
-    end)
-    |> Enum.join("\n")
+    # Use MDEx for markdown to HTML conversion with proper configuration
+    MDEx.to_html!(markdown, mdex_options_with_toc())
+  end
+  
+  defp mdex_options_with_toc do
+    # Use MarkdownProcessor options which now include header_ids
+    if Code.ensure_loaded?(SertantaiDocs.MarkdownProcessor) do
+      apply(SertantaiDocs.MarkdownProcessor, :mdex_options, [])
+    else
+      default_mdex_options()
+    end
+  end
+  
+  defp default_mdex_options do
+    [
+      extension: [
+        strikethrough: true,
+        tagfilter: true,
+        table: true,
+        autolink: true,
+        tasklist: true,
+        footnotes: true,
+        description_lists: true,
+        front_matter_delimiter: "---",
+        header_ids: ""  # Enable header IDs with empty prefix
+      ],
+      parse: [
+        smart: true,
+        relaxed_tasklist_matching: true,
+        relaxed_autolinks: true
+      ],
+      render: [
+        unsafe: false,
+        escape: false,
+        github_pre_lang: true,
+        hardbreaks: false
+      ]
+    ]
   end
 
   defp process_toc_injection(html, toc, _metadata, opts) do

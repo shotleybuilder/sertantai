@@ -2,7 +2,7 @@
   <!-- Sidebar Navigation -->
   <.nav_sidebar 
     items={SertantaiDocsWeb.Navigation.get_navigation_items()}
-    current_path={@conn.request_path}
+    current_path={assigns[:current_path] || @conn.request_path || "/"}
   />
   
   <!-- Main Content Area -->

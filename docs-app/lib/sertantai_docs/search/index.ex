@@ -189,7 +189,7 @@ defmodule SertantaiDocs.Search.Index do
     end
   end
 
-  defp find_matching_documents(documents, terms_index, query_terms, fuzzy \\ false) do
+  defp find_matching_documents(documents, terms_index, query_terms, fuzzy) do
     # Find all document IDs that contain any query term
     matching_ids = 
       query_terms

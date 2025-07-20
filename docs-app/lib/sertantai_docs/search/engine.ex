@@ -8,7 +8,7 @@ defmodule SertantaiDocs.Search.Engine do
   
   use GenServer
   
-  alias SertantaiDocs.Search.{Index, Ranking}
+  alias SertantaiDocs.Search.Index
   alias SertantaiDocs.Navigation.Builder
 
   # Client API
@@ -166,7 +166,7 @@ defmodule SertantaiDocs.Search.Engine do
   end
 
   @impl true
-  def handle_cast({:rebuild_index, scan_result}, state) do
+  def handle_cast({:rebuild_index, scan_result}, _state) do
     new_state = %{
       index: index_from_scan_result(scan_result),
       scan_result: scan_result,

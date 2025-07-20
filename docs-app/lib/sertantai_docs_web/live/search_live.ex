@@ -442,6 +442,4 @@ defmodule SertantaiDocsWeb.SearchLive do
       text
     end
   end
-
-  @popular_searches ["LiveView", "Ecto", "Phoenix", "Authentication", "Testing"]
 end

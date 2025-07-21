@@ -239,6 +239,85 @@ end
 
 ## Critical Implementation Insights
 
+### CrossRef Integration Challenge (2025-01-21)
+
+**Major Discovery**: When integrating with the CrossRef system, HTML comments are stripped.
+
+The CrossRef processor passes markdown through MDEx with security-focused options (`unsafe: false`), which strips HTML comments including `<!-- TOC -->` placeholders. This broke TOC generation.
+
+**Failed Approaches:**
+1. HTML tokens - treated as literal text by MDEx
+2. Div placeholders - stripped by security settings
+3. Custom tokens with underscores - interpreted as markdown emphasis
+4. Markdown placeholders with paragraph wrapping - required regex cleanup
+
+**Winning Solution**: Direct TOC injection in MarkdownProcessor with proper CrossRef integration.
+
+```elixir
+# Final working implementation in MarkdownProcessor
+defp process_markdown_with_toc(markdown, frontmatter) do
+  has_toc_placeholder = String.contains?(markdown, "<!-- TOC -->")
+  
+  if has_toc_placeholder do
+    # Extract headings FIRST from original markdown (exclude H1 - page titles)
+    toc = SertantaiDocs.TOC.Extractor.extract_toc(markdown, min_level: 2)
+    toc_html = generate_toc_html_from_headings(toc.headings)
+    
+    # Process with CrossRef integration AND TOC placeholder replacement
+    cross_ref_result = SertantaiDocs.CrossRef.Processor.process_cross_references(
+      markdown, 
+      %{actor: nil, base_path: ""}
+    )
+    
+    # Replace TOC placeholder in final HTML with our generated TOC
+    final_html = String.replace(cross_ref_result.html, "<!-- TOC -->", toc_html, global: false)
+    
+    # Return consistent structure
+    cross_ref_result 
+    |> Map.put(:html, final_html)
+    |> Map.put(:toc, toc)
+  else
+    # Standard CrossRef processing without TOC
+    SertantaiDocs.CrossRef.Processor.process_cross_references(markdown, %{actor: nil, base_path: ""})
+  end
+end
+```
+
+**Critical Success Factor**: The CrossRef processor must use `unsafe: true` mode to preserve HTML comments.
+
+```elixir
+# In CrossRef.Processor - this was the key fix
+def process_cross_references(content, opts) do
+  # Parse markdown with crossref processing
+  processed_content = process_content_for_cross_references(content, opts)
+  
+  # Convert to HTML with unsafe mode to preserve TOC placeholders
+  html = MDEx.to_html!(processed_content, [
+    extension: [
+      strikethrough: true,
+      table: true,
+      autolink: true,
+      tasklist: true,
+      footnotes: true,
+      description_lists: true,
+      header_ids: ""
+    ],
+    render: [
+      unsafe_: true  # CRITICAL: Preserves <!-- TOC --> comments
+    ]
+  ])
+  
+  %{html: html, cross_references: extract_cross_references(content)}
+end
+```
+
+**Key Insights:**
+- CrossRef processor MUST preserve HTML comments with `unsafe: true`
+- Extract TOC headings from original markdown before any processing
+- Process CrossRef links first, then inject TOC into final HTML
+- Both systems work together when CrossRef preserves comment placeholders
+- No complex placeholder schemes needed - simple HTML comment replacement works
+
 ### MDEx HTML Comment Handling
 
 **Key Discovery**: MDEx strips HTML comments by default with `unsafe: false`.

@@ -9,6 +9,8 @@ author: "Development Team"
 
 This guide explains how the Sertantai documentation system is architected and how developers can create, organize, and maintain documentation.
 
+<!-- TOC -->
+
 ## 📁 Document Structure & Location
 
 ### File Location
@@ -81,6 +83,70 @@ end
 |--------|-----|-----------|
 | With   | Proper | Formatting |
 ```
+
+## 📑 Table of Contents (TOC) Generation
+
+The system includes automatic Table of Contents generation with multiple format options.
+
+### Adding a TOC to Your Document
+
+To include a Table of Contents in your document, simply add a TOC placeholder anywhere in your markdown content:
+
+```markdown
+<!-- TOC -->
+```
+
+**Requirements:**
+- No special frontmatter tags are needed
+- The document must have heading levels 2-6 (H2-H6) to generate TOC entries
+- H1 headings are excluded from TOC (typically the page title)
+- The placeholder will be automatically replaced with the rendered TOC
+
+### TOC Placeholder Options
+
+Multiple TOC formats are supported:
+
+```markdown
+<!-- TOC -->           # Standard navigation TOC (default)
+<!-- TOC inline -->    # Collapsible inline TOC (future feature)
+<!-- TOC sidebar -->   # Sticky sidebar TOC (future feature)
+[TOC]                  # Alternative syntax
+[[TOC]]                # Another alternative syntax
+```
+
+### How TOC Works
+
+1. **Heading Extraction**: System scans markdown for heading levels (H2-H6)
+2. **Hierarchy Building**: Creates nested structure based on heading levels
+3. **ID Generation**: Generates unique anchor IDs for each heading (e.g., `#overview`, `#technical-architecture`)
+4. **Link Creation**: TOC entries link to their corresponding headings
+5. **Styling**: Applies responsive CSS styling with hover effects
+
+### TOC Appearance
+
+The generated TOC includes:
+- **Title**: "Table of Contents" heading
+- **Hierarchical Structure**: Nested lists showing document structure
+- **Clickable Links**: Each entry links to the corresponding section
+- **Responsive Design**: Works on desktop and mobile
+- **Hover Effects**: Visual feedback on link interaction
+- **Accessibility**: Proper semantic HTML and ARIA attributes
+
+### Example TOC Output
+
+When you add `<!-- TOC -->` to a document with sections like:
+
+```markdown
+## Overview
+## Architecture
+### Core Components  
+### Integration Flow
+## Development Workflow
+```
+
+The system generates a styled navigation menu with proper nesting and links.
+
+**Note**: This document includes a TOC above - you can see it in action!
 
 ## 🔗 Cross-References & Links
 

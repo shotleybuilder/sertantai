@@ -24,7 +24,7 @@ defmodule SertantaiDocs.MarkdownProcessor do
       {:ok, content} ->
         {frontmatter, markdown} = extract_frontmatter(content)
         
-        case process_markdown(markdown, frontmatter) do
+        case process_markdown_with_toc(markdown, frontmatter) do
           {:ok, html_content} ->
             {:ok, html_content, frontmatter}
           {:error, reason} ->
@@ -45,7 +45,7 @@ defmodule SertantaiDocs.MarkdownProcessor do
   def process_content(content) when is_binary(content) do
     {frontmatter, markdown} = extract_frontmatter(content)
     
-    case process_markdown(markdown, frontmatter) do
+    case process_markdown_with_toc(markdown, frontmatter) do
       {:ok, html_content} ->
         {:ok, html_content, frontmatter}
       {:error, reason} ->
@@ -89,6 +89,43 @@ defmodule SertantaiDocs.MarkdownProcessor do
         |> enhance_code_blocks(code_block_languages)
       
       {:ok, html_content}
+    rescue
+      e -> {:error, {:markdown_processing_error, e}}
+    end
+  end
+
+  defp process_markdown_with_toc(markdown, frontmatter) do
+    try do
+      # Check if TOC placeholder exists
+      has_toc_placeholder = String.contains?(markdown, "<!-- TOC -->")
+      
+      if has_toc_placeholder do
+        # Process markdown to HTML first (without TOC)
+        code_block_languages = extract_code_block_languages(markdown)
+        
+        html_content = 
+          markdown
+          |> MDEx.to_html!(mdex_options_with_unsafe())
+          |> process_html_cross_references()
+          |> enhance_code_blocks(code_block_languages)
+        
+        # Extract headings from the original markdown (exclude H1)
+        toc = SertantaiDocs.TOC.Extractor.extract_toc(markdown, [min_level: 2])
+        
+        # Generate TOC HTML
+        toc_html = generate_toc_html_from_headings(toc.headings)
+        
+        # Replace the TOC placeholder in the processed HTML
+        html_with_toc = String.replace(html_content, "<!-- TOC -->", toc_html, global: false)
+        
+        # Apply metadata injection last
+        final_html = inject_metadata(html_with_toc, frontmatter)
+        
+        {:ok, final_html}
+      else
+        # Use original processing when no TOC placeholder
+        process_markdown(markdown, frontmatter)
+      end
     rescue
       e -> {:error, {:markdown_processing_error, e}}
     end
@@ -139,6 +176,12 @@ defmodule SertantaiDocs.MarkdownProcessor do
         }
       ]
     ]
+  end
+
+  # MDEx options with unsafe rendering enabled to preserve HTML comments like <!-- TOC -->
+  defp mdex_options_with_unsafe do
+    mdex_options()
+    |> put_in([:render, :unsafe], true)
   end
 
 
@@ -264,6 +307,47 @@ defmodule SertantaiDocs.MarkdownProcessor do
 
   defp get_main_app_url do
     Application.get_env(:sertantai_docs, :main_app_url, "http://localhost:4001")
+  end
+
+  # Generate TOC HTML from headings list - matches SertantaiDocsWeb.Components.TOC structure
+  defp generate_toc_html_from_headings(headings) when is_list(headings) do
+    case headings do
+      [] ->
+        ""
+        
+      _ ->
+        # Build tree structure for nested TOC using existing extractor
+        tree = SertantaiDocs.TOC.Extractor.build_toc_tree(headings)
+        
+        """
+        <nav class="table-of-contents" role="navigation" aria-label="Table of contents">
+          <h2 class="toc-title text-lg font-semibold mb-3">Table of Contents</h2>
+          <ul class="toc-list space-y-1">
+            #{render_toc_tree_items(tree)}
+          </ul>
+        </nav>
+        """
+    end
+  end
+
+  defp render_toc_tree_items(nodes) when is_list(nodes) do
+    Enum.map_join(nodes, "\n", fn node ->
+      children_html = case node.children do
+        [] -> ""
+        children -> """
+        <div class="ml-4">
+          <ul class="toc-list space-y-1">#{render_toc_tree_items(children)}</ul>
+        </div>
+        """
+      end
+      
+      ~s(<li class="toc-item" data-level="#{node.level}">
+        <div class="flex items-center">
+          <a href="##{node.id}" class="toc-link block py-1 text-sm transition-colors hover:text-indigo-600 text-gray-700">#{node.text}</a>
+        </div>
+        #{children_html}
+      </li>)
+    end)
   end
 
   @doc """

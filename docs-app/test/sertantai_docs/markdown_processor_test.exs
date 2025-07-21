@@ -107,6 +107,85 @@ defmodule SertantaiDocs.MarkdownProcessorTest do
       assert html =~ "data-category=\"dev\""
     end
 
+    test "processes TOC placeholders and generates table of contents" do
+      content = """
+      ---
+      title: Test Document
+      ---
+      # Test Document
+      
+      This is a test document.
+      
+      <!-- TOC -->
+      
+      ## Section 1
+      
+      Some content here.
+      
+      ## Section 2
+      
+      More content.
+      
+      ### Subsection 2.1
+      
+      Even more content.
+      """
+      
+      assert {:ok, html, metadata} = MarkdownProcessor.process_content(content)
+      
+      # Should replace TOC placeholder with actual TOC
+      refute html =~ "<!-- TOC -->"
+      assert html =~ "table-of-contents"
+      assert html =~ "Section 1"
+      assert html =~ "Section 2"  
+      assert html =~ "Subsection 2.1"
+      
+      # TOC should link to headings
+      assert html =~ "#section-1"
+      assert html =~ "#section-2"
+      assert html =~ "#subsection-21"
+      
+      # Should exclude H1 from TOC (page title)
+      toc_section = Regex.scan(~r/table-of-contents.*?<\/nav>/s, html) |> List.first()
+      toc_content = if toc_section, do: List.first(toc_section), else: ""
+      refute String.contains?(toc_content, "Test Document")
+      
+      # Metadata should be extracted correctly
+      assert metadata["title"] == "Test Document"
+    end
+    
+    test "handles documents without TOC placeholder" do
+      content = """
+      # Test Document
+      
+      ## Section 1
+      
+      Some content.
+      """
+      
+      assert {:ok, html, _metadata} = MarkdownProcessor.process_content(content)
+      
+      # Should not contain TOC when no placeholder
+      refute html =~ "table-of-contents"
+      assert html =~ "Section 1"
+    end
+    
+    test "handles empty TOC when no headings present" do
+      content = """
+      # Test Document
+      
+      <!-- TOC -->
+      
+      Just some regular content without headings.
+      """
+      
+      assert {:ok, html, _metadata} = MarkdownProcessor.process_content(content)
+      
+      # Should replace placeholder but not show TOC content when no headings
+      refute html =~ "<!-- TOC -->"
+      refute html =~ "table-of-contents"
+    end
+
     test "handles processing errors gracefully" do
       # This would need a scenario that causes MDEx to fail
       # For now, testing with extremely large content

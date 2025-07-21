@@ -681,11 +681,13 @@ defmodule SertantaiDocsWeb.CoreComponents do
   """
   attr :items, :list, default: []
   attr :current_path, :string, default: ""
+  attr :expanded_groups, :any, default: MapSet.new()
   attr :class, :string, default: ""
 
   def nav_sidebar(assigns) do
     ~H"""
-    <nav class={["w-64 bg-gray-50 border-r border-gray-200 min-h-screen", @class]}>
+    <nav class={["w-64 bg-gray-50 border-r border-gray-200 min-h-screen", @class]}
+         id="navigation-sidebar">
       <div class="p-4">
         <.link navigate="/" class="flex items-center space-x-2 mb-6">
           <span class="text-xl font-bold text-gray-900">Sertantai Docs</span>
@@ -697,11 +699,15 @@ defmodule SertantaiDocsWeb.CoreComponents do
               <.nav_item 
                 item={item} 
                 current_path={@current_path}
+                expanded_groups={@expanded_groups}
               />
             </li>
           <% end %>
         </ul>
       </div>
+      
+      <!-- Hidden div for screen reader announcements -->
+      <div id="navigation-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     </nav>
     """
   end
@@ -710,33 +716,110 @@ defmodule SertantaiDocsWeb.CoreComponents do
   Renders a navigation item with optional children.
   """
   attr :item, :map, required: true
-  attr :current_path, :string, default: ""
-  attr :class, :string, default: ""
+  attr :current_path, :string, required: true
+  attr :expanded_groups, :any, default: MapSet.new()
+  attr :class, :string, default: nil
 
   def nav_item(assigns) do
+    assigns = assign_new(assigns, :is_expanded, fn ->
+      case Map.get(assigns.item, :type) do
+        :group ->
+          group_name = Map.get(assigns.item, :group)
+          MapSet.member?(assigns.expanded_groups, group_name)
+        _ ->
+          false
+      end
+    end)
+
     ~H"""
-    <div class={@class}>
-      <.link 
-        navigate={Map.get(@item, :path, "#")}
-        class={[
-          "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-          if(@current_path == Map.get(@item, :path), do: "bg-blue-100 text-blue-700", else: "text-gray-700 hover:bg-gray-100")
-        ]}
-      >
-        <%= Map.get(@item, :title, "Untitled") %>
-      </.link>
-      
-      <%= if Map.get(@item, :children, []) != [] do %>
-        <ul class="ml-4 mt-1 space-y-1">
-          <%= for child <- @item.children do %>
-            <li>
-              <.nav_item 
-                item={child} 
-                current_path={@current_path}
-              />
-            </li>
-          <% end %>
-        </ul>
+    <div class={[@class, Map.get(@item, :css_class)]}>
+      <%= if Map.get(@item, :type) == :group do %>
+        <%!-- Collapsible Group Header --%>
+        <button
+          type="button"
+          class={[
+            "flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md transition-colors",
+            "text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+            Map.get(@item, :header_class)
+          ]}
+          onclick="toggleNavigationGroup(this)"
+          data-group={Map.get(@item, :group)}
+          data-state-key={Map.get(@item, :state_key)}
+          data-default-expanded={Map.get(@item, :default_expanded, false)}
+          data-mobile-collapse={Map.get(@item, :mobile_behavior, %{}) |> Map.get(:collapse_on_mobile, true)}
+          data-mobile-show-count={Map.get(@item, :mobile_behavior, %{}) |> Map.get(:show_item_count, true)}
+          data-key-toggle={Map.get(@item, :keyboard_shortcuts, %{}) |> Map.get(:toggle, "Enter")}
+          data-key-focus-first={Map.get(@item, :keyboard_shortcuts, %{}) |> Map.get(:focus_first, "ArrowDown")}
+          data-key-focus-parent={Map.get(@item, :keyboard_shortcuts, %{}) |> Map.get(:focus_parent, "ArrowUp")}
+          aria-label={Map.get(@item, :aria_label)}
+          aria-expanded={to_string(@is_expanded)}
+          role="button"
+          tabindex="0"
+        >
+          <span class="flex items-center">
+            <%= if icon = Map.get(@item, :icon) do %>
+              <.icon name={icon} class={"w-4 h-4 mr-2 #{Map.get(@item, :icon_color, "text-gray-500")}"} />
+            <% end %>
+            <%= Map.get(@item, :title, "Untitled") %>
+            <%= if count = Map.get(@item, :item_count) do %>
+              <span class="ml-1 text-xs text-gray-400">(<%= count %>)</span>
+            <% end %>
+          </span>
+          <.icon 
+            name={if @is_expanded, do: "hero-chevron-down", else: "hero-chevron-right"} 
+            class="w-4 h-4 transition-transform duration-200"
+          />
+        </button>
+        
+        <%!-- Collapsible Group Children --%>
+        <div 
+          class={[
+            "group-children overflow-hidden transition-all duration-200",
+            unless(@is_expanded, do: "hidden")
+          ]}
+          data-group-content={Map.get(@item, :group)}
+        >
+          <ul class="ml-6 mt-1 space-y-1">
+            <%= for child <- Map.get(@item, :children, []) do %>
+              <li>
+                <.nav_item 
+                  item={child} 
+                  current_path={@current_path}
+                  expanded_groups={@expanded_groups}
+                />
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% else %>
+        <%!-- Regular Page Link --%>
+        <.link 
+          navigate={Map.get(@item, :path, "#")}
+          class={[
+            "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+            if(@current_path == Map.get(@item, :path), 
+              do: "bg-blue-100 text-blue-700", 
+              else: "text-gray-700 hover:bg-gray-100"
+            )
+          ]}
+        >
+          <%= Map.get(@item, :title, "Untitled") %>
+        </.link>
+        
+        <%!-- Non-collapsible Children (for backward compatibility) --%>
+        <%= if Map.get(@item, :children, []) != [] and Map.get(@item, :type) != :group do %>
+          <ul class="ml-4 mt-1 space-y-1">
+            <%= for child <- @item.children do %>
+              <li>
+                <.nav_item 
+                  item={child} 
+                  current_path={@current_path}
+                  expanded_groups={@expanded_groups}
+                />
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
       <% end %>
     </div>
     """

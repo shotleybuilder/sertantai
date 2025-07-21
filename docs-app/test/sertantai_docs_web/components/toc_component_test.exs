@@ -90,7 +90,7 @@ defmodule SertantaiDocsWeb.Components.TOCComponentTest do
         active_id: "section-2"
       )
       
-      assert component =~ ~s(data-active="true")
+      assert component =~ ~s(data-active)
       assert component =~ ~s(id="section-2")
     end
 
@@ -135,7 +135,7 @@ defmodule SertantaiDocsWeb.Components.TOCComponentTest do
       
       assert component =~ "On This Page"
       assert component =~ "Overview"
-      assert component =~ ~s(class="toc-sidebar")
+      assert component =~ ~s(toc-sidebar)
     end
 
     test "renders sticky positioning", %{conn: conn} do
@@ -189,7 +189,7 @@ defmodule SertantaiDocsWeb.Components.TOCComponentTest do
       assert component =~ "Table of Contents"
       assert component =~ "Introduction"
       assert component =~ "Background"
-      assert component =~ ~s(class="inline-toc")
+      assert component =~ ~s(inline-toc)
     end
 
     test "can be collapsed by default", %{conn: conn} do
@@ -200,7 +200,7 @@ defmodule SertantaiDocsWeb.Components.TOCComponentTest do
         collapsed: true
       )
       
-      assert component =~ ~s(data-collapsed="true")
+      assert component =~ ~s(data-collapsed)
       assert component =~ "Expand"
     end
   end

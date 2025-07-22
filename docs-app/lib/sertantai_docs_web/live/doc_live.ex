@@ -50,28 +50,63 @@ defmodule SertantaiDocsWeb.DocLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="documentation-page">
-      <.doc_content>
-        <.breadcrumb 
-          items={[
-            %{title: "Documentation", path: "/"},
-            %{title: String.capitalize(@category), path: "/#{@category}"},
-            %{title: @page, path: nil}
-          ]}
-          class="mb-6"
-        />
+    <div class="flex h-screen bg-white">
+      <!-- Sidebar Navigation with LiveView state -->
+      <.nav_sidebar 
+        items={@navigation_items}
+        current_path={@current_path}
+        filter_state={@filter_state}
+        sort_state={@sort_state}
+        available_sort_options={@available_sort_options}
+        total_count={@total_count}
+        filtered_count={@filtered_count}
+      />
+      
+      <!-- Main Content Area -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-gray-200">
+          <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+              <div class="flex items-center">
+                <.header_search_box class="w-80" id_suffix="liveview" />
+              </div>
+              <div class="flex items-center gap-4">
+                <a href="https://github.com/yourusername/sertantai" class="text-gray-500 hover:text-gray-700">
+                  <.icon name="hero-code-bracket" class="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </header>
         
-        <.doc_header 
-          title={@metadata["title"] || String.capitalize(@page)}
-          description={@metadata["description"]}
-          category={@category}
-          tags={@metadata["tags"] || []}
-        />
-        
-        <article class="prose prose-lg max-w-none">
-          <%= raw @content %>
-        </article>
-      </.doc_content>
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+          <div class="documentation-page">
+            <.doc_content>
+              <.breadcrumb 
+                items={[
+                  %{title: "Documentation", path: "/"},
+                  %{title: String.capitalize(@category), path: "/#{@category}"},
+                  %{title: @page, path: nil}
+                ]}
+                class="mb-6"
+              />
+              
+              <.doc_header 
+                title={@metadata["title"] || String.capitalize(@page)}
+                description={@metadata["description"]}
+                category={@category}
+                tags={@metadata["tags"] || []}
+              />
+              
+              <article class="prose prose-lg max-w-none">
+                <%= raw @content %>
+              </article>
+            </.doc_content>
+          </div>
+        </main>
+      </div>
     </div>
     """
   end

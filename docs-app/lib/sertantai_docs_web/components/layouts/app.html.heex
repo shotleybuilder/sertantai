@@ -1,11 +1,5 @@
-<div class="flex h-screen bg-white">
-  <!-- Sidebar Navigation -->
-  <.nav_sidebar 
-    items={SertantaiDocsWeb.Navigation.get_navigation_items()}
-    current_path={assigns[:current_path] || assigns[:conn] && assigns.conn.request_path || "/"}
-  />
-  
-  <!-- Main Content Area -->
+<div class="h-screen bg-white">
+  <!-- Non-LiveView pages use full layout -->
   <div class="flex-1 flex flex-col overflow-hidden">
     <!-- Top Header -->
     <header class="bg-white border-b border-gray-200">

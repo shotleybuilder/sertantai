@@ -1112,6 +1112,7 @@ defmodule SertantaiDocsWeb.CoreComponents do
   """
   attr :placeholder, :string, default: "Search documentation..."
   attr :class, :string, default: ""
+  attr :id_suffix, :string, default: ""
 
   def header_search_box(assigns) do
     ~H"""
@@ -1138,7 +1139,7 @@ defmodule SertantaiDocsWeb.CoreComponents do
       </div>
       
       <!-- Dropdown search options (initially hidden) -->
-      <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 hidden group-focus-within:block" id="search-options-dropdown">
+      <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 hidden group-focus-within:block" id={"search-options-dropdown#{if @id_suffix != "", do: "-#{@id_suffix}"}"}>
         <div class="p-3">
           <div class="flex flex-wrap gap-3 mb-3">
             <label class="inline-flex items-center">

@@ -132,7 +132,7 @@ defmodule SertantaiDocsWeb.CoreComponentsTest do
       </.doc_content>
       """)
       
-      assert html =~ "max-w-4xl"  # Default max width
+      assert html =~ "max-w-6xl"  # Default max width
       assert html =~ "custom-class"
       assert html =~ "<p>Test content</p>"
     end

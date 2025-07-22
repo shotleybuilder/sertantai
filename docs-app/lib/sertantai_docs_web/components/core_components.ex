@@ -948,8 +948,8 @@ defmodule SertantaiDocsWeb.CoreComponents do
   def doc_content(assigns) do
     ~H"""
     <div class={[
-      "max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
-      "prose prose-lg max-w-none",
+      "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
+      "prose prose-lg",
       "prose-headings:text-gray-900 prose-headings:font-semibold",
       "prose-code:text-pink-600 prose-code:bg-gray-100 prose-code:rounded prose-code:px-1",
       "prose-a:text-blue-600 hover:prose-a:text-blue-800",

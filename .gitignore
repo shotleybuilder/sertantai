@@ -42,6 +42,7 @@ npm-debug.log
 *.pem
 *.key
 priv/cert/
+SUPABASE_ENV_MIGRATION.md
 
 # Elixir Build and Dependencies
 /_build

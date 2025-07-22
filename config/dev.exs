@@ -16,9 +16,9 @@ database_config = if System.get_env("USE_LOCAL_DB") == "true" do
 else
   # Use Supabase connection pooler for IPv4 connectivity
   [
-    username: "postgres.laqakhlqqmakacqgwrnh",  # postgres.{project-ref}
-    password: System.get_env("SUPABASE_PASSWORD"),
-    hostname: "aws-0-eu-west-2.pooler.supabase.com",  # Pooler hostname
+    username: "postgres.#{System.get_env("SUPABASE_PROJECT_ID")}",  # postgres.{project-ref}
+    password: System.get_env("SUPABASE_DB_PASSWORD"),
+    hostname: System.get_env("SUPABASE_POOLER_HOST"),  # Pooler hostname
     database: System.get_env("SUPABASE_DATABASE") || "postgres",
     port: 6543,  # Connection pooling port
     parameters: [pgbouncer: "true"],  # Required for pgbouncer

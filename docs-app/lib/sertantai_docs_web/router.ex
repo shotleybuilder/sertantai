@@ -57,7 +57,7 @@ defmodule SertantaiDocsWeb.Router do
 
     # Documentation routes
     get "/", DocController, :index
-    get "/:category/:page", DocController, :show
+    live "/:category/:page", DocLive
     get "/:category", DocController, :category_index
   end
 

@@ -683,33 +683,137 @@ defmodule SertantaiDocsWeb.CoreComponents do
   attr :current_path, :string, default: ""
   attr :expanded_groups, :any, default: MapSet.new()
   attr :class, :string, default: ""
+  # Filtering/sorting attributes
+  attr :filter_state, :map, default: %{status: "", category: "", priority: "", author: "", tags: []}
+  attr :available_categories, :list, default: []
+  attr :available_priorities, :list, default: []
+  attr :available_authors, :list, default: []
+  attr :available_tags, :list, default: []
+  attr :sort_state, :map, default: %{sort_by: "priority", sort_order: "asc"}
+  attr :available_sort_options, :list, default: []
+  # Display state
+  attr :total_items, :integer, default: 0
+  attr :filtered_items_count, :integer, default: 0
+  attr :mobile_view, :boolean, default: false
+  attr :compact_mode, :boolean, default: false
+  attr :keyboard_shortcuts_enabled, :boolean, default: true
+  attr :focused_item_path, :string, default: nil
 
   def nav_sidebar(assigns) do
+    # Apply filtering and sorting to navigation items
+    filtered_items = apply_filters(assigns.items || [], assigns.filter_state)
+    sorted_items = apply_sorting(filtered_items, assigns.sort_state)
+    
+    assigns = assign(assigns, :processed_items, sorted_items)
+    assigns = assign(assigns, :filtered_count, length(sorted_items))
+    assigns = assign(assigns, :total_count, length(assigns.items || []))
+
     ~H"""
-    <nav class={["w-64 bg-gray-50 border-r border-gray-200 min-h-screen", @class]}
+    <nav class={["w-64 bg-gray-50 border-r border-gray-200 min-h-screen overflow-y-auto", @class]}
          id="navigation-sidebar">
-      <div class="p-4">
+      <div class="p-4 space-y-4">
         <.link navigate="/" class="flex items-center space-x-2 mb-6">
           <span class="text-xl font-bold text-gray-900">Sertantai Docs</span>
         </.link>
         
-        <ul class="space-y-2">
-          <%= for item <- (@items || []) do %>
-            <li>
-              <.nav_item 
-                item={item} 
-                current_path={@current_path}
-                expanded_groups={@expanded_groups}
-              />
-            </li>
-          <% end %>
-        </ul>
+        <!-- Filtering Controls -->
+        <.nav_filters 
+          filter_state={@filter_state}
+          available_options={%{
+            categories: @available_categories,
+            priorities: @available_priorities,
+            authors: @available_authors,
+            tags: @available_tags
+          }}
+          class="mb-4"
+        />
+        
+        <!-- Sorting Controls -->
+        <.nav_sort 
+          sort_state={@sort_state}
+          available_sort_options={@available_sort_options}
+          class="mb-4"
+        />
+        
+        <!-- Filter Status -->
+        <div class="mb-4 p-2 bg-blue-50 border border-blue-200 rounded-md">
+          <p class="text-xs text-blue-700 font-medium">
+            <%= if @filtered_count < @total_count do %>
+              <.icon name="hero-information-circle" class="h-3 w-3 inline-block mr-1" />
+              Showing <%= @filtered_count %> of <%= @total_count %> items
+            <% else %>
+              <.icon name="hero-document-text" class="h-3 w-3 inline-block mr-1" />
+              <%= @total_count %> items total
+            <% end %>
+          </p>
+        </div>
+        
+        <!-- Navigation Items -->
+        <%= if @filtered_count > 0 do %>
+          <ul class="space-y-2">
+            <%= for item <- @processed_items do %>
+              <li>
+                <.nav_item 
+                  item={item} 
+                  current_path={@current_path}
+                  expanded_groups={@expanded_groups}
+                />
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <div class="text-center text-gray-500 py-8">
+            <p class="text-sm">No items match the current filters</p>
+            <p class="text-xs mt-1">Try adjusting your filter criteria</p>
+          </div>
+        <% end %>
       </div>
       
       <!-- Hidden div for screen reader announcements -->
       <div id="navigation-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     </nav>
     """
+  end
+
+  # Helper function to apply filters
+  defp apply_filters(items, filter_state) do
+    items
+    |> SertantaiDocs.MarkdownProcessor.filter_by_status(Map.get(filter_state, :status, ""))
+    |> SertantaiDocs.MarkdownProcessor.filter_by_category(Map.get(filter_state, :category, ""))
+    |> SertantaiDocs.MarkdownProcessor.filter_by_priority(Map.get(filter_state, :priority, ""))
+    |> SertantaiDocs.MarkdownProcessor.filter_by_author(Map.get(filter_state, :author, ""))
+    |> SertantaiDocs.MarkdownProcessor.filter_by_tags(Map.get(filter_state, :tags, []))
+  end
+
+  # Helper function to apply sorting
+  defp apply_sorting(items, sort_state) do
+    sort_by = Map.get(sort_state, :sort_by, "priority")
+    sort_order_raw = Map.get(sort_state, :sort_order, "asc")
+    
+    sort_order = case sort_order_raw do
+      :asc -> :asc
+      :desc -> :desc
+      "asc" -> :asc
+      "desc" -> :desc
+      _ -> :asc
+    end
+    
+    case sort_by do
+      "priority" -> SertantaiDocs.MarkdownProcessor.sort_by_priority(items, sort_order)
+      "title" -> SertantaiDocs.MarkdownProcessor.sort_by_title(items, sort_order)
+      "last_modified" -> SertantaiDocs.MarkdownProcessor.sort_by_date(items, sort_order)
+      "category" -> SertantaiDocs.MarkdownProcessor.sort_by_category(items, sort_order)
+      _ -> items
+    end
+  end
+
+  # Helper function to check if filters are empty
+  defp filters_empty?(filter_state) do
+    Map.get(filter_state, :status, "") == "" and
+    Map.get(filter_state, :category, "") == "" and
+    Map.get(filter_state, :priority, "") == "" and
+    Map.get(filter_state, :author, "") == "" and
+    (Map.get(filter_state, :tags, []) == [] or Map.get(filter_state, :tags, []) == nil)
   end
 
   @doc """
@@ -721,19 +825,29 @@ defmodule SertantaiDocsWeb.CoreComponents do
   attr :class, :string, default: nil
 
   def nav_item(assigns) do
+    # Determine if this item should be collapsible
+    item_has_children = Map.has_key?(assigns.item, :children) and is_list(Map.get(assigns.item, :children)) and length(Map.get(assigns.item, :children)) > 0
+    is_collapsible = Map.get(assigns.item, :type) == :group or item_has_children
+    
     assigns = assign_new(assigns, :is_expanded, fn ->
-      case Map.get(assigns.item, :type) do
-        :group ->
+      cond do
+        Map.get(assigns.item, :type) == :group ->
           group_name = Map.get(assigns.item, :group)
           MapSet.member?(assigns.expanded_groups, group_name)
-        _ ->
+        item_has_children ->
+          # For main sections, use the title as the key for expansion state
+          section_key = Map.get(assigns.item, :title, "") |> String.downcase() |> String.replace(" ", "_")
+          MapSet.member?(assigns.expanded_groups, section_key)
+        true ->
           false
       end
     end)
+    
+    assigns = assign(assigns, :is_collapsible, is_collapsible)
 
     ~H"""
     <div class={[@class, Map.get(@item, :css_class)]}>
-      <%= if Map.get(@item, :type) == :group do %>
+      <%= if @is_collapsible do %>
         <%!-- Collapsible Group Header --%>
         <button
           type="button"
@@ -743,9 +857,9 @@ defmodule SertantaiDocsWeb.CoreComponents do
             Map.get(@item, :header_class)
           ]}
           onclick="toggleNavigationGroup(this)"
-          data-group={Map.get(@item, :group)}
-          data-state-key={Map.get(@item, :state_key)}
-          data-default-expanded={Map.get(@item, :default_expanded, false)}
+          data-group={Map.get(@item, :group) || (Map.get(@item, :title, "") |> String.downcase() |> String.replace(" ", "_"))}
+          data-state-key={Map.get(@item, :state_key) || ("section_" <> (Map.get(@item, :title, "") |> String.downcase() |> String.replace(" ", "_")))}
+          data-default-expanded={Map.get(@item, :default_expanded, Map.get(@item, :type) != :group)}
           data-mobile-collapse={Map.get(@item, :mobile_behavior, %{}) |> Map.get(:collapse_on_mobile, true)}
           data-mobile-show-count={Map.get(@item, :mobile_behavior, %{}) |> Map.get(:show_item_count, true)}
           data-key-toggle={Map.get(@item, :keyboard_shortcuts, %{}) |> Map.get(:toggle, "Enter")}
@@ -761,7 +875,7 @@ defmodule SertantaiDocsWeb.CoreComponents do
               <.icon name={icon} class={"w-4 h-4 mr-2 #{Map.get(@item, :icon_color, "text-gray-500")}"} />
             <% end %>
             <%= Map.get(@item, :title, "Untitled") %>
-            <%= if count = Map.get(@item, :item_count) do %>
+            <%= if count = Map.get(@item, :item_count) || (Map.has_key?(@item, :children) && length(Map.get(@item, :children, []))) do %>
               <span class="ml-1 text-xs text-gray-400">(<%= count %>)</span>
             <% end %>
           </span>
@@ -777,7 +891,7 @@ defmodule SertantaiDocsWeb.CoreComponents do
             "group-children overflow-hidden transition-all duration-200",
             unless(@is_expanded, do: "hidden")
           ]}
-          data-group-content={Map.get(@item, :group)}
+          data-group-content={Map.get(@item, :group) || (Map.get(@item, :title, "") |> String.downcase() |> String.replace(" ", "_"))}
         >
           <ul class="ml-6 mt-1 space-y-1">
             <%= for child <- Map.get(@item, :children, []) do %>
@@ -991,5 +1105,413 @@ defmodule SertantaiDocsWeb.CoreComponents do
       />
     </div>
     """
+  end
+
+  @doc """
+  Renders a compact header search box with dropdown for advanced options.
+  """
+  attr :placeholder, :string, default: "Search documentation..."
+  attr :class, :string, default: ""
+
+  def header_search_box(assigns) do
+    ~H"""
+    <div class={["relative group", @class]}>
+      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <.icon name="hero-magnifying-glass" class="h-5 w-5 text-gray-400" />
+      </div>
+      <input
+        type="text"
+        placeholder={@placeholder}
+        phx-change="search-query-change"
+        class="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+      />
+      <!-- Search options toggle button -->
+      <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+        <button
+          type="button"
+          phx-click="toggle-search-options"
+          class="text-gray-400 hover:text-gray-600 focus:outline-none"
+          title="Search options"
+        >
+          <.icon name="hero-adjustments-horizontal" class="h-4 w-4" />
+        </button>
+      </div>
+      
+      <!-- Dropdown search options (initially hidden) -->
+      <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 hidden group-focus-within:block" id="search-options-dropdown">
+        <div class="p-3">
+          <div class="flex flex-wrap gap-3 mb-3">
+            <label class="inline-flex items-center">
+              <input
+                type="checkbox"
+                phx-click="toggle-search-tags"
+                checked={true}
+                class="mr-1 h-3 w-3 text-blue-600"
+              />
+              <span class="text-xs text-gray-700">Tags</span>
+            </label>
+            
+            <label class="inline-flex items-center">
+              <input
+                type="checkbox"
+                phx-click="toggle-search-author"
+                checked={true}
+                class="mr-1 h-3 w-3 text-blue-600"
+              />
+              <span class="text-xs text-gray-700">Author</span>
+            </label>
+            
+            <label class="inline-flex items-center">
+              <input
+                type="checkbox"
+                phx-click="toggle-search-category"
+                checked={true}
+                class="mr-1 h-3 w-3 text-blue-600"
+              />
+              <span class="text-xs text-gray-700">Category</span>
+            </label>
+          </div>
+          
+          <div class="flex items-center">
+            <label class="text-xs text-gray-700 mr-2">Scope:</label>
+            <select phx-change="change-search-scope" class="text-xs border border-gray-300 rounded px-2 py-1 flex-1">
+              <option value="">All groups</option>
+              <option value="todo">Todo</option>
+              <option value="done">Done</option>
+              <option value="strategy">Strategy</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders filtering controls for navigation.
+  """
+  attr :filter_state, :map, required: true
+  attr :available_options, :map, required: true
+  attr :class, :string, default: ""
+
+  def nav_filters(assigns) do
+    ~H"""
+    <div class={["nav-filters mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm", @class]}>
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">Filters</h3>
+      
+      <div class="space-y-3">
+        <!-- Status Filter -->
+        <div class="filter-section">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+          <select 
+            phx-change="filter-by-status" 
+            class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">All</option>
+            <option value="live" selected={@filter_state.status == "live"}>Live</option>
+            <option value="archived" selected={@filter_state.status == "archived"}>Archived</option>
+          </select>
+        </div>
+        
+        <!-- Category Filter -->
+        <div class="filter-section">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Category</label>
+          <select 
+            phx-change="filter-by-category" 
+            class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">All Categories</option>
+            <%= for category <- Map.get(@available_options, :categories, []) do %>
+              <option value={category} selected={@filter_state.category == category}>
+                <%= String.capitalize(category) %>
+              </option>
+            <% end %>
+          </select>
+        </div>
+        
+        <!-- Priority Filter -->
+        <div class="filter-section">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Priority</label>
+          <select 
+            phx-change="filter-by-priority" 
+            class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">All Priorities</option>
+            <%= for priority <- Map.get(@available_options, :priorities, []) do %>
+              <option value={priority} selected={@filter_state.priority == priority}>
+                <%= String.capitalize(priority) %>
+              </option>
+            <% end %>
+          </select>
+        </div>
+
+        <!-- Author Filter -->
+        <div class="filter-section">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Author</label>
+          <select 
+            phx-change="filter-by-author" 
+            class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">All Authors</option>
+            <%= for author <- Map.get(@available_options, :authors, []) do %>
+              <option value={author} selected={@filter_state.author == author}>
+                <%= author %>
+              </option>
+            <% end %>
+          </select>
+        </div>
+        
+        <!-- Tags Filter -->
+        <div class="filter-section">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Tags</label>
+          <div class="tag-filter-container p-2 bg-gray-50 rounded-md max-h-32 overflow-y-auto">
+            <%= for tag <- Map.get(@available_options, :tags, []) do %>
+              <label class="inline-flex items-center mr-3 mb-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  phx-click="toggle-tag-filter" 
+                  phx-value-tag={tag}
+                  checked={tag in Map.get(@filter_state, :tags, [])}
+                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3 w-3"
+                />
+                <span class="ml-1.5 text-xs text-gray-700"><%= tag %></span>
+              </label>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Filter Actions -->
+      <div class="filter-actions mt-4 pt-3 border-t border-gray-200">
+        <button 
+          phx-click="reset-filters" 
+          class="w-full px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={filters_empty?(@filter_state)}
+        >
+          <.icon name="hero-x-circle" class="h-4 w-4 inline-block mr-1" />
+          Reset Filters
+        </button>
+        <%= if not filters_empty?(@filter_state) do %>
+          <p class="text-xs text-blue-600 text-center mt-2">
+            <.icon name="hero-funnel" class="h-3 w-3 inline-block" />
+            Filters active
+          </p>
+        <% end %>
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders sorting controls for navigation.
+  """
+  attr :sort_state, :map, required: true
+  attr :available_sort_options, :list, required: true
+  attr :class, :string, default: ""
+
+  def nav_sort(assigns) do
+    ~H"""
+    <div class={["nav-sort mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm", @class]}>
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">Sort</h3>
+      <div class="flex items-center space-x-2">
+        <select 
+          phx-change="change-sort" 
+          class="flex-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        >
+          <%= for option <- @available_sort_options do %>
+            <option value={option.value} selected={@sort_state.sort_by == option.value}>
+              <%= option.label %>
+            </option>
+          <% end %>
+        </select>
+        <button 
+          phx-click="toggle-sort-order" 
+          class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          title={if @sort_state.sort_order in ["asc", :asc], do: "Sort descending", else: "Sort ascending"}
+        >
+          <%= if @sort_state.sort_order in ["asc", :asc] do %>
+            <.icon name="hero-bars-arrow-up" class="h-4 w-4 text-gray-600" />
+          <% else %>
+            <.icon name="hero-bars-arrow-down" class="h-4 w-4 text-gray-600" />
+          <% end %>
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Enhanced search box with metadata filtering options.
+  """
+  attr :search_state, :map, required: true
+  attr :available_options, :map, required: true
+  attr :class, :string, default: ""
+
+  def enhanced_search_box(assigns) do
+    ~H"""
+    <div class={["enhanced-search-box", @class]}>
+      <div class="search-input-container">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <.icon name="hero-magnifying-glass" class="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            phx-change="search-query-change"
+            phx-value-query={Map.get(@search_state, :query, "")}
+            placeholder="Search documentation and metadata..."
+            class="block w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
+      
+      <div class="search-options mt-2">
+        <div class="search-metadata-toggles flex items-center space-x-4 mb-2">
+          <label class="inline-flex items-center">
+            <input
+              type="checkbox"
+              phx-click="toggle-search-tags"
+              checked={Map.get(@search_state, :include_tags, true)}
+              class="mr-1 h-3 w-3"
+            />
+            <span class="text-xs">Include Tags</span>
+          </label>
+          
+          <label class="inline-flex items-center">
+            <input
+              type="checkbox"
+              phx-click="toggle-search-author"
+              checked={Map.get(@search_state, :include_author, true)}
+              class="mr-1 h-3 w-3"
+            />
+            <span class="text-xs">Include Author</span>
+          </label>
+          
+          <label class="inline-flex items-center">
+            <input
+              type="checkbox"
+              phx-click="toggle-search-category"
+              checked={Map.get(@search_state, :include_category, true)}
+              class="mr-1 h-3 w-3"
+            />
+            <span class="text-xs">Include Category</span>
+          </label>
+        </div>
+        
+        <div class="search-scope">
+          <label class="text-xs font-medium text-gray-700">Search in group:</label>
+          <select phx-change="change-search-scope" class="text-xs ml-2">
+            <option value="">All groups</option>
+            <%= for group <- Map.get(@available_options, :groups, []) do %>
+              <option value={group} selected={Map.get(@search_state, :scoped_to_group, "") == group}>
+                <%= String.capitalize(group) %>
+              </option>
+            <% end %>
+          </select>
+        </div>
+      </div>
+      
+      <%= if Map.get(@search_state, :show_suggestions, false) do %>
+        <div class="tag-suggestions bg-white border rounded-md shadow-lg mt-1 absolute z-10 w-full">
+          <div class="suggestion-header p-2 text-xs font-medium text-gray-700">
+            Tag suggestions:
+          </div>
+          <%= for suggestion <- Map.get(@search_state, :tag_suggestions, []) do %>
+            <button
+              phx-click="select-tag-suggestion"
+              phx-value-tag={suggestion}
+              class="w-full text-left px-3 py-1 text-xs hover:bg-gray-100"
+            >
+              <span class="text-blue-600">#<%= suggestion %></span>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders search results with highlighting and statistics.
+  """
+  attr :search_state, :map, required: true
+  attr :class, :string, default: ""
+
+  def search_results(assigns) do
+    ~H"""
+    <div class={["search-results", @class]}>
+      <%= if Map.get(@search_state, :query, "") == "" do %>
+        <div class="empty-search text-center text-gray-500 py-8">
+          <p>Enter a search term to find documents</p>
+          <p class="text-xs mt-1">Search includes titles, content, tags, authors, and categories</p>
+        </div>
+      <% else %>
+        <%= if Map.get(@search_state, :total_results, 0) > 0 do %>
+          <div class="search-stats text-xs text-gray-600 mb-4">
+            <span class="results-count">
+              Found <%= Map.get(@search_state, :total_results, 0) %> results
+            </span>
+            <span class="search-time ml-2">
+              (<%= Map.get(@search_state, :search_time_ms, 0) %>ms)
+            </span>
+            
+            <%= if filters_applied?(@search_state) do %>
+              <div class="active-filters mt-1">
+                <span class="filter-label">Filters:</span>
+                <%= if Map.get(@search_state, :include_tags, false) do %>
+                  <span class="filter-badge bg-blue-100 text-blue-800 px-1 rounded text-xs">Tags</span>
+                <% end %>
+                <%= if Map.get(@search_state, :include_author, false) do %>
+                  <span class="filter-badge bg-green-100 text-green-800 px-1 rounded text-xs ml-1">Author</span>
+                <% end %>
+                <%= if Map.get(@search_state, :scoped_to_group, "") != "" do %>
+                  <span class="filter-badge bg-purple-100 text-purple-800 px-1 rounded text-xs ml-1">
+                    Group: <%= Map.get(@search_state, :scoped_to_group, "") %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          
+          <div class="results-list">
+            <%= for result <- Map.get(@search_state, :results, []) do %>
+              <div class="search-result mb-4 p-3 border rounded-lg hover:bg-gray-50">
+                <h3 class="result-title mb-1">
+                  <a href={Map.get(result, :path, "#")} class="text-blue-600 hover:underline font-medium">
+                    <%= Map.get(result, :title, "Untitled") %>
+                  </a>
+                </h3>
+                
+                <div class="result-matches">
+                  <%= for match <- Map.get(result, :matches, []) do %>
+                    <div class="match text-xs text-gray-600 mb-1">
+                      <span class="match-field font-medium"><%= Map.get(match, :field, "") %>:</span>
+                      <span class="match-text ml-1">
+                        <%= Map.get(match, :text, "") %>
+                      </span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="no-results text-center text-gray-500 py-8">
+            <p>No results found for "<%= Map.get(@search_state, :query, "") %>"</p>
+            <p class="text-xs mt-1">Try different keywords or check your spelling</p>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Helper functions
+
+  defp filters_applied?(search_state) do
+    Map.get(search_state, :include_tags, false) or
+    Map.get(search_state, :include_author, false) or
+    Map.get(search_state, :include_category, false) or
+    Map.get(search_state, :scoped_to_group, "") != ""
   end
 end

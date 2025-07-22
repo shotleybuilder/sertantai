@@ -49,15 +49,17 @@ function setGroupState(button, isExpanded, shouldSave) {
   button.setAttribute('aria-expanded', isExpanded.toString());
   
   // Update chevron icon
-  const chevronIcon = button.querySelector('.icon svg');
-  if (chevronIcon) {
-    const chevronParent = chevronIcon.parentElement;
+  // Phoenix/Heroicons use CSS classes, not SVG elements
+  const iconElement = button.querySelector('span[class*="hero-chevron"]');
+  if (iconElement) {
     if (isExpanded) {
-      chevronParent.innerHTML = getChevronDownSvg();
-      chevronParent.dataset.testid = 'chevron-down';
+      // Change to chevron-down
+      iconElement.className = iconElement.className.replace('hero-chevron-right', 'hero-chevron-down');
+      iconElement.dataset.testid = 'chevron-down';
     } else {
-      chevronParent.innerHTML = getChevronRightSvg();
-      chevronParent.dataset.testid = 'chevron-right';
+      // Change to chevron-right
+      iconElement.className = iconElement.className.replace('hero-chevron-down', 'hero-chevron-right');
+      iconElement.dataset.testid = 'chevron-right';
     }
   }
   
@@ -203,10 +205,412 @@ function focusPreviousGroup(button) {
 }
 
 // SVG icon helpers (matching Heroicons)
-function getChevronDownSvg() {
-  return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>';
+
+// ===== ADVANCED FILTERING AND SORTING STATE MANAGEMENT =====
+
+const FILTER_STORAGE_KEY = 'sertantai_docs_filters';
+const SORT_STORAGE_KEY = 'sertantai_docs_sort';
+const SEARCH_PREFERENCES_KEY = 'sertantai_docs_search_prefs';
+const STATE_VERSION = 2;
+const MAX_AGE_SECONDS = 86400 * 30; // 30 days
+
+/**
+ * Save filter state to localStorage
+ * @param {Object} filters - Filter state object
+ * @returns {boolean} - Success status
+ */
+window.saveFilterState = function(filters) {
+  try {
+    const stateToSave = {
+      ...filters,
+      timestamp: Math.floor(Date.now() / 1000),
+      version: STATE_VERSION
+    };
+    
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(stateToSave));
+    syncStateAcrossTabs('filters', stateToSave);
+    return true;
+  } catch (error) {
+    console.warn('Failed to save filter state:', error);
+    // Try saving essential state only if quota exceeded
+    try {
+      const essentialState = {
+        status: filters.status || "",
+        category: filters.category || "",
+        priority: filters.priority || "",
+        timestamp: Math.floor(Date.now() / 1000),
+        version: STATE_VERSION
+      };
+      localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(essentialState));
+      return true;
+    } catch (fallbackError) {
+      console.error('Failed to save even essential filter state:', fallbackError);
+      return false;
+    }
+  }
+};
+
+/**
+ * Load filter state from localStorage
+ * @returns {Object} - Filter state object
+ */
+window.loadFilterState = function() {
+  try {
+    const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!saved) return getDefaultFilters();
+    
+    const state = JSON.parse(saved);
+    
+    // Check if state is expired
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const age = currentTimestamp - (state.timestamp || 0);
+    if (age > MAX_AGE_SECONDS) {
+      console.log('Filter state expired, using defaults');
+      cleanupExpiredState();
+      return getDefaultFilters();
+    }
+    
+    // Migrate old state if needed
+    if (state.version < STATE_VERSION) {
+      return migrateFilterState(state);
+    }
+    
+    // Validate state structure
+    return validateFilterState(state);
+  } catch (error) {
+    console.warn('Failed to load filter state:', error);
+    return getDefaultFilters();
+  }
+};
+
+/**
+ * Get default filter state
+ * @returns {Object} - Default filter state
+ */
+window.getDefaultFilters = function() {
+  return {
+    status: "",
+    category: "",
+    priority: "",
+    author: "",
+    tags: [],
+    version: STATE_VERSION,
+    timestamp: Math.floor(Date.now() / 1000)
+  };
+};
+
+/**
+ * Save sort state to localStorage
+ * @param {Object} sortOptions - Sort state object
+ * @returns {boolean} - Success status
+ */
+window.saveSortState = function(sortOptions) {
+  try {
+    const stateToSave = {
+      ...sortOptions,
+      timestamp: Math.floor(Date.now() / 1000),
+      version: STATE_VERSION
+    };
+    
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(stateToSave));
+    syncStateAcrossTabs('sort', stateToSave);
+    return true;
+  } catch (error) {
+    console.warn('Failed to save sort state:', error);
+    return false;
+  }
+};
+
+/**
+ * Load sort state from localStorage
+ * @returns {Object} - Sort state object
+ */
+window.loadSortState = function() {
+  try {
+    const saved = localStorage.getItem(SORT_STORAGE_KEY);
+    if (!saved) return getDefaultSort();
+    
+    const state = JSON.parse(saved);
+    
+    // Check if state is expired
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const age = currentTimestamp - (state.timestamp || 0);
+    if (age > MAX_AGE_SECONDS) {
+      return getDefaultSort();
+    }
+    
+    return validateSortState(state);
+  } catch (error) {
+    console.warn('Failed to load sort state:', error);
+    return getDefaultSort();
+  }
+};
+
+/**
+ * Get default sort state
+ * @returns {Object} - Default sort state
+ */
+window.getDefaultSort = function() {
+  return {
+    sort_by: "priority",
+    sort_order: "asc",
+    version: STATE_VERSION,
+    timestamp: Math.floor(Date.now() / 1000)
+  };
+};
+
+/**
+ * Save search preferences to localStorage
+ * @param {Object} preferences - Search preferences object
+ * @returns {boolean} - Success status
+ */
+window.saveSearchPreferences = function(preferences) {
+  try {
+    const stateToSave = {
+      ...preferences,
+      timestamp: Math.floor(Date.now() / 1000),
+      version: STATE_VERSION
+    };
+    
+    localStorage.setItem(SEARCH_PREFERENCES_KEY, JSON.stringify(stateToSave));
+    return true;
+  } catch (error) {
+    console.warn('Failed to save search preferences:', error);
+    return false;
+  }
+};
+
+/**
+ * Load search preferences from localStorage
+ * @returns {Object} - Search preferences object
+ */
+window.loadSearchPreferences = function() {
+  try {
+    const saved = localStorage.getItem(SEARCH_PREFERENCES_KEY);
+    if (!saved) return getDefaultSearchPreferences();
+    
+    const state = JSON.parse(saved);
+    return validateSearchPreferences(state);
+  } catch (error) {
+    console.warn('Failed to load search preferences:', error);
+    return getDefaultSearchPreferences();
+  }
+};
+
+/**
+ * Get default search preferences
+ * @returns {Object} - Default search preferences
+ */
+function getDefaultSearchPreferences() {
+  return {
+    include_tags: true,
+    include_author: false,
+    include_category: true,
+    last_scope: "",
+    recent_queries: [],
+    version: STATE_VERSION,
+    timestamp: Math.floor(Date.now() / 1000)
+  };
 }
 
-function getChevronRightSvg() {
-  return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>';
+/**
+ * Sync state across browser tabs using storage events
+ * @param {string} stateType - Type of state ('filters', 'sort', 'navigation')
+ * @param {Object} state - State object to sync
+ */
+window.syncStateAcrossTabs = function(stateType, state) {
+  // Storage events are automatically fired when localStorage changes
+  // This function is here for consistency and future custom sync logic
+  const syncEvent = new CustomEvent('stateSync', {
+    detail: { stateType, state, tabId: generateTabId() }
+  });
+  window.dispatchEvent(syncEvent);
+};
+
+/**
+ * Clean up expired state from localStorage
+ * @param {number} maxAgeSeconds - Maximum age for state to be considered valid
+ * @returns {number} - Number of cleaned up items
+ */
+window.cleanupExpiredState = function(maxAgeSeconds = MAX_AGE_SECONDS) {
+  const keys = [FILTER_STORAGE_KEY, SORT_STORAGE_KEY, SEARCH_PREFERENCES_KEY, NAVIGATION_STORAGE_KEY];
+  let cleanedCount = 0;
+  
+  keys.forEach(key => {
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const state = JSON.parse(saved);
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        const age = currentTimestamp - (state.timestamp || 0);
+        
+        if (age > maxAgeSeconds) {
+          localStorage.removeItem(key);
+          cleanedCount++;
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to cleanup state for key ${key}:`, error);
+    }
+  });
+  
+  return cleanedCount;
+};
+
+/**
+ * Migrate old state format to new format
+ * @param {Object} oldState - Old state object
+ * @returns {Object} - Migrated state object
+ */
+window.migrateOldState = function(oldState) {
+  return migrateFilterState(oldState);
+};
+
+/**
+ * Migrate old filter state format
+ * @param {Object} oldState - Old filter state
+ * @returns {Object} - Migrated filter state
+ */
+function migrateFilterState(oldState) {
+  if (oldState.version === 1 && oldState.filters) {
+    // Migrate version 1 format
+    const [category, priority] = (oldState.filters || "").split(",");
+    return {
+      status: "",
+      category: category || "",
+      priority: priority || "",
+      author: "",
+      tags: [],
+      version: STATE_VERSION,
+      timestamp: Math.floor(Date.now() / 1000)
+    };
+  }
+  
+  return getDefaultFilters();
 }
+
+/**
+ * Validate filter state structure
+ * @param {Object} state - Filter state to validate
+ * @returns {Object} - Validated filter state
+ */
+function validateFilterState(state) {
+  const validStatuses = ["", "live", "archived"];
+  const validPriorities = ["", "high", "medium", "low"];
+  
+  return {
+    status: validStatuses.includes(state.status) ? state.status : "",
+    category: typeof state.category === 'string' ? state.category : "",
+    priority: validPriorities.includes(state.priority) ? state.priority : "",
+    author: typeof state.author === 'string' ? state.author : "",
+    tags: Array.isArray(state.tags) ? state.tags : [],
+    version: state.version || STATE_VERSION,
+    timestamp: state.timestamp || Math.floor(Date.now() / 1000)
+  };
+}
+
+/**
+ * Validate sort state structure
+ * @param {Object} state - Sort state to validate
+ * @returns {Object} - Validated sort state
+ */
+function validateSortState(state) {
+  const validSortFields = ["priority", "title", "last_modified", "category"];
+  const validSortOrders = ["asc", "desc"];
+  
+  return {
+    sort_by: validSortFields.includes(state.sort_by) ? state.sort_by : "priority",
+    sort_order: validSortOrders.includes(state.sort_order) ? state.sort_order : "asc",
+    version: state.version || STATE_VERSION,
+    timestamp: state.timestamp || Math.floor(Date.now() / 1000)
+  };
+}
+
+/**
+ * Validate search preferences structure
+ * @param {Object} state - Search preferences to validate
+ * @returns {Object} - Validated search preferences
+ */
+function validateSearchPreferences(state) {
+  return {
+    include_tags: typeof state.include_tags === 'boolean' ? state.include_tags : true,
+    include_author: typeof state.include_author === 'boolean' ? state.include_author : false,
+    include_category: typeof state.include_category === 'boolean' ? state.include_category : true,
+    last_scope: typeof state.last_scope === 'string' ? state.last_scope : "",
+    recent_queries: Array.isArray(state.recent_queries) ? state.recent_queries : [],
+    version: state.version || STATE_VERSION,
+    timestamp: state.timestamp || Math.floor(Date.now() / 1000)
+  };
+}
+
+/**
+ * Generate a unique tab ID for cross-tab synchronization
+ * @returns {string} - Unique tab ID
+ */
+function generateTabId() {
+  return `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Handle URL parameter sync for shareable filtered views
+ * @param {Object} state - Current state (filters + sort)
+ * @returns {string} - URL parameters string
+ */
+window.generateUrlParams = function(state) {
+  const params = new URLSearchParams();
+  
+  if (state.status) params.set('filter_status', state.status);
+  if (state.category) params.set('filter_category', state.category);
+  if (state.priority) params.set('filter_priority', state.priority);
+  if (state.author) params.set('filter_author', state.author);
+  if (state.sort_by) params.set('sort_by', state.sort_by);
+  if (state.sort_order) params.set('sort_order', state.sort_order);
+  if (state.expanded_groups && state.expanded_groups.length > 0) {
+    params.set('groups', state.expanded_groups.join(','));
+  }
+  
+  return params.toString();
+};
+
+/**
+ * Parse URL parameters into state object
+ * @param {string} urlParams - URL parameters string
+ * @returns {Object} - Parsed state object
+ */
+window.parseUrlParams = function(urlParams) {
+  const params = new URLSearchParams(urlParams);
+  
+  return {
+    status: params.get('filter_status') || "",
+    category: params.get('filter_category') || "",
+    priority: params.get('filter_priority') || "",
+    author: params.get('filter_author') || "",
+    sort_by: params.get('sort_by') || "priority",
+    sort_order: params.get('sort_order') || "asc",
+    expanded_groups: params.get('groups') ? params.get('groups').split(',') : []
+  };
+};
+
+// Listen for storage events from other tabs
+window.addEventListener('storage', function(e) {
+  if ([FILTER_STORAGE_KEY, SORT_STORAGE_KEY, SEARCH_PREFERENCES_KEY, NAVIGATION_STORAGE_KEY].includes(e.key)) {
+    // State changed in another tab, reload if needed
+    console.log(`State synchronized from another tab: ${e.key}`);
+    
+    // Optionally refresh the UI based on the changed state
+    if (typeof window.handleStateSync === 'function') {
+      window.handleStateSync(e.key, e.newValue);
+    }
+  }
+});
+
+// Cleanup expired state on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Clean up expired state in background
+  setTimeout(() => {
+    const cleanedCount = cleanupExpiredState();
+    if (cleanedCount > 0) {
+      console.log(`Cleaned up ${cleanedCount} expired state entries`);
+    }
+  }, 1000);
+});

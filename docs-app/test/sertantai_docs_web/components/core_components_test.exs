@@ -26,7 +26,8 @@ defmodule SertantaiDocsWeb.CoreComponentsTest do
       assert html =~ "Setup"
       assert html =~ "test-class"
       assert html =~ ~s(href="/")
-      assert html =~ ~s(href="/dev")
+      # Developer item should become a collapsible button since it has children
+      refute html =~ ~s(href="/dev")
       assert html =~ ~s(href="/dev/setup")
     end
 
@@ -113,8 +114,12 @@ defmodule SertantaiDocsWeb.CoreComponentsTest do
       
       assert html =~ "Parent"
       assert html =~ "Child"
-      assert html =~ ~s(href="/parent")
+      # Parent item should become a collapsible button since it has children
+      refute html =~ ~s(href="/parent")
       assert html =~ ~s(href="/parent/child")
+      # Should have collapsible button functionality
+      assert html =~ "toggleNavigationGroup"
+      assert html =~ "hero-chevron-right"
     end
   end
 
@@ -288,6 +293,138 @@ defmodule SertantaiDocsWeb.CoreComponentsTest do
       html = render_component(&nav_sidebar/1, assigns)
       assert html =~ "Valid"
       assert html =~ "Another Valid"
+    end
+  end
+
+  describe "nav_item chevron rotation" do
+    test "renders chevron-right icon when collapsed" do
+      item = %{
+        type: :group,
+        title: "Build Docs",
+        group: "build",
+        children: [
+          %{title: "Child 1", path: "/child1"},
+          %{title: "Child 2", path: "/child2"}
+        ]
+      }
+
+      expanded_groups = MapSet.new([])
+
+      html =
+        render_component(&nav_item/1, %{
+          item: item,
+          current_path: "/test",
+          expanded_groups: expanded_groups,
+          class: ""
+        })
+
+      # Should render chevron-right when collapsed
+      assert html =~ "hero-chevron-right"
+      refute html =~ "hero-chevron-down"
+      
+      # Button should have aria-expanded=false
+      assert html =~ ~r/aria-expanded="false"/
+    end
+
+    test "renders chevron-down icon when expanded" do
+      item = %{
+        type: :group,
+        title: "Build Docs", 
+        group: "build",
+        children: [
+          %{title: "Child 1", path: "/child1"},
+          %{title: "Child 2", path: "/child2"}
+        ]
+      }
+
+      expanded_groups = MapSet.new(["build"])
+
+      html =
+        render_component(&nav_item/1, %{
+          item: item,
+          current_path: "/test",
+          expanded_groups: expanded_groups,
+          class: ""
+        })
+
+      # Should render chevron-down when expanded
+      assert html =~ "hero-chevron-down"
+      refute html =~ "hero-chevron-right"
+      
+      # Button should have aria-expanded=true
+      assert html =~ ~r/aria-expanded="true"/
+    end
+
+    test "renders correct data attributes for JavaScript integration" do
+      item = %{
+        type: :group,
+        title: "Developer Docs",
+        group: "dev",
+        children: [%{title: "Child", path: "/child"}]
+      }
+
+      expanded_groups = MapSet.new([])
+
+      html =
+        render_component(&nav_item/1, %{
+          item: item,
+          current_path: "/test",
+          expanded_groups: expanded_groups,
+          class: ""
+        })
+
+      # Should have required data attributes for JavaScript
+      assert html =~ ~r/data-group="dev"/
+      assert html =~ ~r/onclick="toggleNavigationGroup\(this\)"/
+      assert html =~ ~r/data-state-key/
+      # Note: data-default-expanded may not be present for all items
+    end
+
+    test "main sections without type=group are also collapsible when they have children" do
+      item = %{
+        title: "Home",
+        children: [
+          %{title: "Overview", path: "/overview"},
+          %{title: "Getting Started", path: "/getting-started"}
+        ]
+      }
+
+      expanded_groups = MapSet.new([])
+
+      html =
+        render_component(&nav_item/1, %{
+          item: item,
+          current_path: "/test",
+          expanded_groups: expanded_groups,
+          class: ""
+        })
+
+      # Should be collapsible and have chevron icon
+      assert html =~ "hero-chevron-right"
+      assert html =~ ~r/onclick="toggleNavigationGroup\(this\)"/
+      assert html =~ ~r/aria-expanded="false"/
+    end
+
+    test "items without children are not collapsible" do
+      item = %{
+        title: "Simple Link",
+        path: "/simple"
+      }
+
+      expanded_groups = MapSet.new([])
+
+      html =
+        render_component(&nav_item/1, %{
+          item: item,
+          current_path: "/test",
+          expanded_groups: expanded_groups,
+          class: ""
+        })
+
+      # Should not have chevron icons or collapsible behavior
+      refute html =~ "hero-chevron"
+      refute html =~ "toggleNavigationGroup"
+      refute html =~ "aria-expanded"
     end
   end
 

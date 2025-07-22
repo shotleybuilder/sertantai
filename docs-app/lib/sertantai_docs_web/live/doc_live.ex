@@ -43,6 +43,7 @@ defmodule SertantaiDocsWeb.DocLive do
       |> assign(:sort_state, initial_state.sort_state)
       |> assign(:available_sort_options, get_sort_options())
       |> load_page_content()
+      |> assign(:__layout__, {SertantaiDocsWeb.Layouts, :doc_live})
     
     {:ok, socket}
   end

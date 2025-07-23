@@ -58,6 +58,8 @@ defmodule SertantaiWeb.RecordSelectionLive do
                  |> assign(:show_filters, true)
                  |> assign(:max_selections, 1000)  # Add selection limit
                  |> assign(:audit_context, audit_context)  # Store audit context
+                 |> assign(:show_modal, false)  # Modal state
+                 |> assign(:modal_record, nil)  # Record being viewed in modal
                  |> load_initial_data()}
                  
               {:error, error} ->
@@ -210,6 +212,42 @@ defmodule SertantaiWeb.RecordSelectionLive do
 
   def handle_event("toggle_filters", _params, socket) do
     {:noreply, assign(socket, :show_filters, !socket.assigns.show_filters)}
+  end
+
+  # Modal event handlers
+  def handle_event("show_detail", %{"record_id" => record_id}, socket) do
+    record = Enum.find(socket.assigns.records, &(&1.id == record_id))
+    
+    {:noreply,
+     socket
+     |> assign(:show_modal, true)
+     |> assign(:modal_record, record)}
+  end
+
+  def handle_event("close_detail", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_modal, false)
+     |> assign(:modal_record, nil)}
+  end
+
+  def handle_event("close_detail_backdrop", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_modal, false)
+     |> assign(:modal_record, nil)}
+  end
+
+  # Handle escape key for modal
+  def handle_event("keydown", %{"key" => "Escape"}, socket) do
+    if socket.assigns.show_modal do
+      {:noreply,
+       socket
+       |> assign(:show_modal, false)
+       |> assign(:modal_record, nil)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("export_csv", _params, socket) do

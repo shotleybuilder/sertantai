@@ -267,6 +267,9 @@
                   Select
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Detail
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Family
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -297,6 +300,17 @@
                       checked={is_selected?(@selected_records, record.id)}
                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     />
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <button
+                      type="button"
+                      phx-click="show_detail"
+                      phx-value-record_id={record.id}
+                      class="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600"
+                      aria-label={"View details for #{record.title_en || record.name}"}
+                    >
+                      <.icon name="hero-eye" class="h-5 w-5" />
+                    </button>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">
@@ -425,3 +439,122 @@
     <% end %>
   </div>
 </div>
+
+<!-- Record Detail Modal -->
+<%= if @show_modal && @modal_record do %>
+  <div
+    class="fixed inset-0 z-50 overflow-y-auto"
+    aria-labelledby="modal-title"
+    role="dialog"
+    aria-modal="true"
+    phx-window-keydown="keydown"
+    phx-key="Escape"
+  >
+    <!-- Background backdrop -->
+    <div
+      class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+      phx-click="close_detail_backdrop"
+      aria-hidden="true"
+    ></div>
+
+    <!-- Modal panel -->
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
+      <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+        <!-- Modal header -->
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+              Record Details
+            </h3>
+            <button
+              type="button"
+              phx-click="close_detail"
+              class="ml-3 bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <span class="sr-only">Close</span>
+              <.icon name="hero-x-mark" class="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Modal body -->
+        <div class="bg-gray-50 px-4 pb-4 sm:px-6 sm:pb-6">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Title</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @modal_record.title_en || @modal_record.name %></dd>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Family</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @modal_record.family %></dd>
+              </div>
+              
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Number</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @modal_record.number %></dd>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Year</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= format_year(@modal_record.year) %></dd>
+              </div>
+              
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Type</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @modal_record.type_code || @modal_record.type_desc %></dd>
+              </div>
+            </div>
+            
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Status</dt>
+              <dd class="mt-1">
+                <%= case format_status(@modal_record.live) do %>
+                  <% {:ok, status} -> %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <%= status %>
+                    </span>
+                  <% {:error, status} -> %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      <%= status %>
+                    </span>
+                  <% {:warning, status} -> %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <%= status %>
+                    </span>
+                  <% {:neutral, status} -> %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <%= status %>
+                    </span>
+                <% end %>
+              </dd>
+            </div>
+
+            <%= if @modal_record.md_description do %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Description</dt>
+                <dd class="mt-1 text-sm text-gray-900 prose prose-sm max-w-none">
+                  <%= @modal_record.md_description %>
+                </dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+
+        <!-- Modal footer -->
+        <div class="bg-gray-100 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button
+            type="button"
+            phx-click="close_detail"
+            class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

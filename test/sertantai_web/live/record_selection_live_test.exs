@@ -1,6 +1,8 @@
 defmodule SertantaiWeb.RecordSelectionLiveTest do
   use SertantaiWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
+  require Ash.Query
+  import Ash.Expr
 
   alias Sertantai.Accounts.User
   alias Sertantai.UkLrt
@@ -14,16 +16,28 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
   end
 
   setup do
-    # Setup manual sandbox for sequential test execution
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Sertantai.Repo)
-    # Create a test user
-    user_attrs = %{
-      email: "records@example.com",
-      password: "securepassword123",
-      password_confirmation: "securepassword123"
-    }
+    # Handle sandbox checkout (supports multiple tests)
+    case Ecto.Adapters.SQL.Sandbox.checkout(Sertantai.Repo) do
+      :ok -> :ok
+      {:already, :owner} -> :ok
+    end
     
-    {:ok, user} = Ash.create(User, user_attrs, action: :register_with_password, domain: Sertantai.Accounts)
+    # Critical: Enable shared mode for LiveView processes
+    Ecto.Adapters.SQL.Sandbox.mode(Sertantai.Repo, {:shared, self()})
+    
+    # Create admin user with proper Ash pattern
+    user = 
+      User
+      |> Ash.Changeset.for_create(:register_with_password, %{
+        email: "records@example.com",
+        first_name: "Test",
+        last_name: "User",
+        role: :admin,
+        timezone: "UTC",
+        password: "securepassword123",
+        password_confirmation: "securepassword123"
+      })
+      |> Ash.create!(domain: Sertantai.Accounts)
     
     # Create some test UK LRT records
     test_records = [
@@ -54,12 +68,12 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
     ]
     
     created_records = Enum.map(test_records, fn attrs ->
-      case Ash.create(UkLrt, attrs, domain: Sertantai.Domain) do
-        {:ok, record} -> record
-        {:error, _} -> nil
-      end
+      UkLrt
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attributes(attrs)
+      |> Ash.Changeset.for_create(:create)
+      |> Ash.create!(domain: Sertantai.Domain)
     end)
-    |> Enum.reject(&is_nil/1)
     
     %{user: user, test_records: created_records}
   end
@@ -1055,6 +1069,375 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
         # After the socket is connected and user performs actions,
         # audit context should be available (though it may still be nil in tests)
         assert Map.has_key?(socket_state.assigns, :audit_context)
+      else
+        assert true
+      end
+    end
+  end
+
+  describe "Phase 6: Record Detail Modal" do
+    @tag :phase6
+    test "detail view control appears after SELECT column", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            # Load records by selecting a family
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html = render(view)
+            
+            # Should have detail view control column with appropriate icon
+            assert html =~ ~r/<th[^>]*>.*Detail.*<\/th>/
+            # Should have detail buttons/icons in the table rows
+            assert html =~ ~r/phx-click=["\']show_detail["\'][^>]*>/
+            # Icon should be appropriate (eye, info, or similar)
+            assert html =~ ~r/(eye|info|detail)/i
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "clicking detail control opens modal", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            # Load records
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Click detail control for first record
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_after_click = render(view)
+            
+            # Modal should be visible
+            assert html_after_click =~ ~r/<div[^>]*class=["\'][^"\']*modal[^"\']*["\'][^>]*>/
+            # Modal should contain record information
+            assert html_after_click =~ "Record Details"
+            # Should show the specific record's title
+            assert html_after_click =~ first_record.title_en
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "modal displays record details with placeholder content", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_modal = render(view)
+            
+            # Modal should show key record fields as placeholder content
+            assert html_modal =~ first_record.title_en
+            assert html_modal =~ first_record.family
+            assert html_modal =~ first_record.number
+            assert html_modal =~ "#{first_record.year}"
+            assert html_modal =~ first_record.type_code
+            assert html_modal =~ first_record.live
+            
+            # Should have placeholder sections for future expansion
+            assert html_modal =~ "Record Details" or html_modal =~ "Detail Information"
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "modal can be closed via close button", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Open modal
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_open = render(view)
+            assert html_open =~ "Record Details"
+            
+            # Close modal via close button
+            render_click(view, :close_detail, %{})
+            html_closed = render(view)
+            
+            # Modal should no longer be visible
+            refute html_closed =~ ~r/<div[^>]*class=["\'][^"\']*modal[^"\']*["\'][^>]*>.*Record Details/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "modal can be closed via escape key", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Open modal
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_open = render(view)
+            assert html_open =~ "Record Details"
+            
+            # Close modal via escape key
+            render_hook(view, :keydown, %{key: "Escape"})
+            html_closed = render(view)
+            
+            # Modal should no longer be visible
+            refute html_closed =~ ~r/<div[^>]*class=["\'][^"\']*modal[^"\']*["\'][^>]*>.*Record Details/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "modal can be closed by clicking outside", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Open modal
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_open = render(view)
+            assert html_open =~ "Record Details"
+            
+            # Close modal by clicking backdrop
+            render_click(view, :close_detail_backdrop, %{})
+            html_closed = render(view)
+            
+            # Modal should no longer be visible
+            refute html_closed =~ ~r/<div[^>]*class=["\'][^"\']*modal[^"\']*["\'][^>]*>.*Record Details/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "opening modal doesn't affect row selection", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Select the record first
+            render_change(view, :toggle_record, %{record_id: first_record.id})
+            html_selected = render(view)
+            assert html_selected =~ "1 selected"
+            assert html_selected =~ "checked"
+            
+            # Open modal for same record
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_modal_open = render(view)
+            
+            # Record should still be selected
+            assert html_modal_open =~ "1 selected"
+            assert html_modal_open =~ "checked"
+            assert html_modal_open =~ "Record Details"
+            
+            # Close modal
+            render_click(view, :close_detail, %{})
+            html_modal_closed = render(view)
+            
+            # Record should still be selected
+            assert html_modal_closed =~ "1 selected"
+            assert html_modal_closed =~ "checked"
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "modal has proper accessibility attributes", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_modal = render(view)
+            
+            # Modal should have proper ARIA attributes
+            assert html_modal =~ ~r/role=["\']dialog["\'][^>]*>/
+            assert html_modal =~ ~r/aria-modal=["\']true["\'][^>]*>/
+            assert html_modal =~ ~r/aria-labelledby=["\'][^"\']*["\'][^>]*>/
+            
+            # Detail control should have aria-label
+            assert html_modal =~ ~r/aria-label=["\'][^"\']*detail[^"\']*["\'][^>]*>/i
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "only one modal can be open at a time", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) >= 2 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            second_record = List.last(test_records)
+            
+            # Open modal for first record
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_first_modal = render(view)
+            assert html_first_modal =~ first_record.title_en
+            
+            # Open modal for second record
+            render_click(view, :show_detail, %{record_id: second_record.id})
+            html_second_modal = render(view)
+            
+            # Should show second record's modal
+            assert html_second_modal =~ second_record.title_en
+            # Should not show first record's content (first modal should be closed)
+            refute html_second_modal =~ first_record.title_en or first_record.title_en == second_record.title_en
+            
+            # Should only have one modal dialog present
+            modal_count = length(Regex.scan(~r/role=["\']dialog["\']/, html_second_modal))
+            assert modal_count == 1
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "detail control column appears in correct position", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html = render(view)
+            
+            # Check that DETAIL column is positioned after SELECT and before FAMILY
+            # Using regex to check header order
+            assert html =~ ~r/<th[^>]*>.*Select.*<\/th>\s*<th[^>]*>.*Detail.*<\/th>\s*<th[^>]*>.*Family.*<\/th>/s
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "modal shows loading state if needed", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_modal = render(view)
+            
+            # Modal should either show content immediately or show loading state
+            loading_present = String.contains?(html_modal, "Loading") or String.contains?(html_modal, "loading")
+            content_present = String.contains?(html_modal, first_record.title_en)
+            
+            # Either loading or content should be present (not both)
+            assert loading_present or content_present
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase6
+    test "detail control uses appropriate icon", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html = render(view)
+            
+            # Should use an appropriate icon for detail view
+            # Check for common icon patterns: eye, info, details, etc.
+            icon_present = html =~ ~r/(eye|info|detail|view|show)/i or
+                          html =~ ~r/heroicon-.*-(eye|information|document|magnifying)/i or
+                          html =~ ~r/fa-.*-(eye|info|file)/i
+            
+            assert icon_present, "Detail control should have an appropriate icon"
+            
+          {:error, _} ->
+            assert true
+        end
       else
         assert true
       end

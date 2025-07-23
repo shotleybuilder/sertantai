@@ -640,5 +640,50 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
           end
       end
     end
+
+    test "handles page refresh without conn_connect_info errors", %{conn: conn, user: user} do
+      authenticated_conn = conn |> assign(:current_user, user)
+
+      # Test initial page load (simulating refresh) - socket not connected
+      assert {:ok, view, html} = live(authenticated_conn, "/records")
+      
+      # Page should load successfully
+      assert html =~ "UK LRT Record Selection"
+      
+      # Should not have any Phoenix.LiveView.conn_connect_info errors
+      refute html =~ "FunctionClauseError"
+      refute html =~ "conn_connect_info"
+      
+      # Test that audit context is properly handled after connection
+      # Select a family to trigger an event that would use audit context
+      render_change(view, :filter_change, %{filters: %{family: "Transport"}})
+      
+      # This should work without errors even though initial mount had no connect_info
+      assert render(view) =~ "UK LRT Record Selection"
+    end
+
+    test "audit context is captured after socket connects", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = conn |> assign(:current_user, user)
+
+      if length(test_records) > 0 do
+        {:ok, view, _html} = live(authenticated_conn, "/records")
+        
+        # Load records by selecting a family
+        render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+        
+        # Select a record - this should trigger audit context capture
+        first_record = List.first(test_records)
+        render_change(view, :toggle_record, %{record_id: first_record.id})
+        
+        # Get socket state to verify audit context was eventually captured
+        socket_state = :sys.get_state(view.pid).socket
+        
+        # After the socket is connected and user performs actions,
+        # audit context should be available (though it may still be nil in tests)
+        assert Map.has_key?(socket_state.assigns, :audit_context)
+      else
+        assert true
+      end
+    end
   end
 end

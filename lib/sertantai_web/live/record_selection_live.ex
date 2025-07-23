@@ -41,6 +41,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
                 {:ok,
                  socket
                  |> assign(:current_user, user)
+                 |> assign(:current_path, "/records")
                  |> assign(:page_title, "UK LRT Record Selection")
                  |> assign(:loading, false)
                  |> assign(:records, [])
@@ -404,7 +405,17 @@ defmodule SertantaiWeb.RecordSelectionLive do
     # Store in persistent storage with audit information
     case socket.assigns[:current_user] do
       %{id: user_id} when not is_nil(user_id) ->
+        # Get audit options and potentially update audit context
         audit_opts = build_audit_opts(socket, opts)
+        
+        # If we got fresh audit context, update it in assigns
+        updated_socket = 
+          if connected?(socket) and (socket.assigns[:audit_context] == nil or socket.assigns.audit_context.session_id == nil) do
+            assign(updated_socket, :audit_context, extract_audit_context(socket))
+          else
+            updated_socket
+          end
+        
         UserSelections.store_selections(user_id, selected_ids, audit_opts)
         updated_socket
       _ ->
@@ -414,16 +425,31 @@ defmodule SertantaiWeb.RecordSelectionLive do
   
   # Extract audit context from socket during mount (when connect_info is available)
   defp extract_audit_context(socket) do
-    %{
-      session_id: get_session_id_from_connect_info(socket),
-      ip_address: get_connect_ip_from_connect_info(socket),
-      user_agent: get_user_agent_from_connect_info(socket)
-    }
+    if connected?(socket) do
+      %{
+        session_id: get_session_id_from_connect_info(socket),
+        ip_address: get_connect_ip_from_connect_info(socket),
+        user_agent: get_user_agent_from_connect_info(socket)
+      }
+    else
+      # During initial mount (page refresh), connect_info is not available
+      %{
+        session_id: nil,
+        ip_address: nil,
+        user_agent: nil
+      }
+    end
   end
   
   # Build audit context from stored socket assigns
   defp build_audit_opts(socket, additional_opts \\ []) do
-    audit_context = Map.get(socket.assigns, :audit_context, %{})
+    # Try to get fresh audit context if socket is connected and we don't have it yet
+    audit_context = 
+      if connected?(socket) and (socket.assigns[:audit_context] == nil or socket.assigns.audit_context.session_id == nil) do
+        extract_audit_context(socket)
+      else
+        Map.get(socket.assigns, :audit_context, %{})
+      end
     
     base_opts = [
       session_id: Map.get(audit_context, :session_id),
@@ -436,7 +462,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
   
   # Extract session ID from connect_info during mount
   defp get_session_id_from_connect_info(socket) do
-    case get_connect_info(socket, :session) do
+    case Phoenix.LiveView.get_connect_info(socket, :session) do
       %{"_csrf_token" => token} -> String.slice(token, 0, 16)
       _ -> nil
     end
@@ -444,7 +470,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
   
   # Extract IP address from connect_info during mount
   defp get_connect_ip_from_connect_info(socket) do
-    case get_connect_info(socket, :peer_data) do
+    case Phoenix.LiveView.get_connect_info(socket, :peer_data) do
       %{address: address} -> 
         case :inet.ntoa(address) do
           {:error, _} -> nil
@@ -456,7 +482,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
   
   # Extract User-Agent from connect_info during mount
   defp get_user_agent_from_connect_info(socket) do
-    case get_connect_info(socket, :user_agent) do
+    case Phoenix.LiveView.get_connect_info(socket, :user_agent) do
       ua when is_binary(ua) -> ua
       _ -> nil
     end

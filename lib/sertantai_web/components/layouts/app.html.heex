@@ -43,7 +43,7 @@
   </div>
 </header>
 <main class="px-4 py-20 sm:px-6 lg:px-8">
-  <div class={if assigns[:current_path] && String.starts_with?(assigns[:current_path], "/admin"), do: "w-full", else: "mx-auto max-w-2xl"}>
+  <div class={if assigns[:current_path] && (String.starts_with?(assigns[:current_path], "/admin") || String.starts_with?(assigns[:current_path], "/records")), do: "w-full", else: "mx-auto max-w-2xl"}>
     <.flash_group flash={@flash} />
     {@inner_content}
   </div>

@@ -50,6 +50,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
                  |> assign(:current_page, 1)
                  |> assign(:page_size, @default_page_size)
                  |> assign(:filters, %{"family" => "", "year" => "", "type_code" => "", "status" => ""})
+                 |> assign(:search, "")
                  |> assign(:family_options, [])
                  |> assign(:year_options, [])
                  |> assign(:type_code_options, [])
@@ -79,10 +80,25 @@ defmodule SertantaiWeb.RecordSelectionLive do
     {:noreply, apply_filters(socket, params)}
   end
 
-  def handle_event("filter_change", %{"filters" => filters}, socket) do
+  def handle_event("filter_change", params, socket) do
+    filters = params["filters"] || %{}
+    search = params["search"] || ""
+    
     {:noreply,
      socket
      |> assign(:filters, filters)
+     |> assign(:search, search)
+     |> assign(:current_page, 1)
+     |> assign(:loading, true)
+     |> load_filtered_records()}
+  end
+
+  def handle_event("search_change", params, socket) do
+    search = params["search"] || ""
+    
+    {:noreply,
+     socket
+     |> assign(:search, search)
      |> assign(:current_page, 1)
      |> assign(:loading, true)
      |> load_filtered_records()}
@@ -178,10 +194,11 @@ defmodule SertantaiWeb.RecordSelectionLive do
   end
 
   def handle_event("clear_filters", _params, socket) do
-    # Clear filters and reset to initial state
+    # Clear filters and search, reset to initial state
     updated_socket = 
       socket
       |> assign(:filters, %{family: "", year: "", type_code: "", status: ""})
+      |> assign(:search, "")
       |> assign(:current_page, 1)
       |> assign(:records, [])
       |> assign(:total_count, 0)
@@ -333,15 +350,17 @@ defmodule SertantaiWeb.RecordSelectionLive do
 
   defp load_filtered_records(socket) do
     filters = socket.assigns.filters
+    search = socket.assigns.search
     page = socket.assigns.current_page
     page_size = socket.assigns.page_size
+
 
     # Only load records if a family is selected
     family = if filters["family"] != "", do: filters["family"], else: nil
     
     if family do
-      # Build query with filters
-      query = build_filtered_query(filters, page, page_size)
+      # Build query with filters and search
+      query = build_filtered_query(filters, search, page, page_size)
 
       case Ash.read(query, domain: Sertantai.Domain) do
         {:ok, %{results: records, count: count}} ->
@@ -373,7 +392,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
     end
   end
 
-  defp build_filtered_query(filters, page, page_size) do
+  defp build_filtered_query(filters, search, page, page_size) do
     family = if filters["family"] != "", do: filters["family"], else: nil
     year = 
       case filters["year"] do
@@ -388,8 +407,10 @@ defmodule SertantaiWeb.RecordSelectionLive do
       family: family,
       year: year,
       type_code: type_code,
-      status: status
+      status: status,
+      search: if(search && search != "", do: search, else: nil)
     }
+
 
     UkLrt
     |> Ash.Query.for_read(:paginated, filter_args)

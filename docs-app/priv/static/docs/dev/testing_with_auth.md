@@ -148,3 +148,147 @@ end
 - `/test/sertantai_web/live/record_selection_live_test.exs` - Custom session helper
 - `/test/support/conn_case.ex` - Standard `log_in_user/2` helper
 - `/lib/sertantai_web/live/record_selection_live.ex` - Authentication expectations
+
+## Updated Solutions (Session 2)
+
+### Database Transaction Resolution ✅
+
+**Problem Solved**: The database transaction boundary issue that prevented LiveView processes from accessing test data has been resolved.
+
+**Root Cause**: LiveView processes run in separate Elixir processes and couldn't access data created within the test's database transaction when using `Ecto.Adapters.SQL.Sandbox` in `:manual` mode.
+
+**Solution**: Use shared sandbox mode to allow LiveView processes to access the same database transaction as the test:
+
+```elixir
+# In test setup
+setup do
+  # Handle case where sandbox is already checked out
+  case Ecto.Adapters.SQL.Sandbox.checkout(Sertantai.Repo) do
+    :ok -> :ok
+    {:already, :owner} -> :ok
+  end
+  
+  # Enable shared mode so LiveView processes can access test data
+  Ecto.Adapters.SQL.Sandbox.mode(Sertantai.Repo, {:shared, self()})
+  
+  # ... rest of setup
+end
+```
+
+### Ash Changeset Creation Pattern ✅
+
+**Problem**: Incorrect order of Ash changeset operations caused validation errors.
+
+**Wrong Pattern**:
+```elixir
+# This fails with "Changeset has already been validated"
+UkLrt
+|> Ash.Changeset.for_create(:create)
+|> Ash.Changeset.change_attributes(attrs)
+|> Ash.create!(domain: Sertantai.Domain)
+```
+
+**Correct Pattern**:
+```elixir
+# Proper order: new -> change_attributes -> for_create -> create
+UkLrt
+|> Ash.Changeset.new()
+|> Ash.Changeset.change_attributes(attrs)
+|> Ash.Changeset.for_create(:create)
+|> Ash.create!(domain: Sertantai.Domain)
+```
+
+### Working Test Configuration
+
+```elixir
+defmodule SertantaiWeb.RecordSelectionLiveTest do
+  use SertantaiWeb.ConnCase, async: false  # Required for database sharing
+  import Phoenix.LiveViewTest
+  require Ash.Query
+  import Ash.Expr
+  
+  # ... other aliases
+  
+  setup do
+    # Handle sandbox checkout (supports multiple tests)
+    case Ecto.Adapters.SQL.Sandbox.checkout(Sertantai.Repo) do
+      :ok -> :ok
+      {:already, :owner} -> :ok
+    end
+    
+    # Critical: Enable shared mode for LiveView processes
+    Ecto.Adapters.SQL.Sandbox.mode(Sertantai.Repo, {:shared, self()})
+    
+    # Create admin user with proper Ash pattern
+    admin_user = 
+      User
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attributes(%{
+        email: "admin@example.com",
+        password: "password123!",
+        password_confirmation: "password123!",
+        first_name: "Admin",
+        last_name: "User",
+        role: :admin,
+        timezone: "UTC"
+      })
+      |> Ash.Changeset.for_create(:register_with_password)
+      |> Ash.create!(domain: Sertantai.Accounts)
+    
+    %{user: admin_user}
+  end
+  
+  # Tests now work reliably with authentication
+  @tag :phase3
+  test "search functionality works", %{conn: conn, user: user} do
+    authenticated_conn = log_in_user(conn, user)
+    
+    {:ok, view, html} = live(authenticated_conn, "/records")
+    # Test passes - LiveView can access the test user
+    assert html =~ "Record Selection"
+  end
+end
+```
+
+### Key Requirements for LiveView Auth Tests
+
+1. **Use `async: false`**: Required for database transaction sharing
+2. **Add Ash imports**: `require Ash.Query` and `import Ash.Expr` for filter expressions
+3. **Handle sandbox checkout**: Support multiple tests with `{:already, :owner}` case
+4. **Enable shared mode**: Critical for LiveView process database access
+5. **Use correct Ash patterns**: Follow `new -> change_attributes -> for_create -> create` order
+6. **Include `password_confirmation`**: Required for `:register_with_password` action
+
+### Database Schema Issues Resolution ✅
+
+**Problem**: Ash resource field names that aren't GraphQL-compliant (like `:"2ndary_class"`) cause compilation errors.
+
+**Solution**: 
+1. Rename database columns to be GraphQL-compliant
+2. Use direct SQL commands for production databases that can't use migrations
+3. Update Ash resource snapshots to reflect new schema
+
+```elixir
+# Direct SQL for production column rename
+ALTER TABLE uk_lrt RENAME COLUMN "2ndary_class" TO secondary_class;
+```
+
+### Working Test Results
+
+All Phase 3 search functionality tests now pass:
+- ✅ Search box rendering
+- ✅ Search by title, family, and number fields  
+- ✅ Case-insensitive search
+- ✅ Search interaction with other filters
+- ✅ Multi-field search capabilities
+
+### Current Status Update
+
+**Previous Status**: Blocked by database transaction boundary issues
+**New Status**: ✅ **RESOLVED** - All authentication and database issues resolved
+
+The testing framework now reliably supports:
+- LiveView tests with authentication
+- Complex database operations with Ash
+- Cross-process database access for LiveView processes
+- TDD development workflow for LiveView features

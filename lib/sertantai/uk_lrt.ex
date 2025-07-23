@@ -8,6 +8,8 @@ defmodule Sertantai.UkLrt do
     domain: Sertantai.Domain,
     data_layer: AshPostgres.DataLayer,
     extensions: [AshGraphql.Resource, AshJsonApi.Resource]
+    
+  import Ash.CiString
 
   postgres do
     table "uk_lrt"
@@ -67,7 +69,7 @@ defmodule Sertantai.UkLrt do
       description "Type class classification"
     end
     
-    attribute :"2ndary_class", :string do
+    attribute :secondary_class, :string do
       allow_nil? true
       description "Secondary classification"
     end
@@ -152,7 +154,19 @@ defmodule Sertantai.UkLrt do
   end
 
   actions do
-    defaults [:read, :create, :update, :destroy]
+    defaults [:read, :update, :destroy]
+    
+    create :create do
+      description "Create a new UK LRT record"
+      primary? true
+      accept [
+        :family, :family_ii, :name, :md_description, :year, :number, :live,
+        :type_desc, :type_code, :type_class, :secondary_class, :live_description,
+        :acronym, :old_style_number, :role, :tags, :title_en, :geo_extent,
+        :geo_region, :duty_holder, :power_holder, :rights_holder, :purpose,
+        :latest_amend_date, :function
+      ]
+    end
     
     read :by_family do
       description "Filter records by family field"
@@ -188,11 +202,12 @@ defmodule Sertantai.UkLrt do
     end
     
     read :paginated do
-      description "Paginated read with optional filtering"
+      description "Paginated read with optional filtering and search"
       argument :family, :string, allow_nil?: true
       argument :year, :integer, allow_nil?: true
       argument :type_code, :string, allow_nil?: true
       argument :status, :string, allow_nil?: true
+      argument :search, :string, allow_nil?: true
       argument :page_size, :integer, default: 20
       
       filter expr(
@@ -215,6 +230,12 @@ defmodule Sertantai.UkLrt do
           true
         else
           live == ^arg(:status)
+        end and
+        if is_nil(^arg(:search)) do
+          true
+        else
+          fragment("? ILIKE ?", title_en, fragment("'%' || ? || '%'", ^arg(:search))) or
+          fragment("? ILIKE ?", number, fragment("'%' || ? || '%'", ^arg(:search)))
         end
       )
       

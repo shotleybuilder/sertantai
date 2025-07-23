@@ -60,6 +60,8 @@ defmodule SertantaiWeb.RecordSelectionLive do
                  |> assign(:audit_context, audit_context)  # Store audit context
                  |> assign(:show_modal, false)  # Modal state
                  |> assign(:modal_record, nil)  # Record being viewed in modal
+                 |> assign(:sort_by, "family")  # Default sort by family
+                 |> assign(:sort_order, "asc")  # Default ascending sort
                  |> load_initial_data()}
                  
               {:error, error} ->
@@ -237,6 +239,24 @@ defmodule SertantaiWeb.RecordSelectionLive do
 
   def handle_event("toggle_filters", _params, socket) do
     {:noreply, assign(socket, :show_filters, !socket.assigns.show_filters)}
+  end
+
+  # Phase 5: Sortable Columns event handler
+  def handle_event("sort", %{"field" => field}, socket) do
+    {sort_by, sort_order} = 
+      if socket.assigns.sort_by == field do
+        {field, if(socket.assigns.sort_order == "asc", do: "desc", else: "asc")}
+      else
+        {field, "asc"}
+      end
+    
+    {:noreply,
+     socket
+     |> assign(:sort_by, sort_by)
+     |> assign(:sort_order, sort_order)
+     |> assign(:current_page, 1)  # Reset to page 1 when sorting changes
+     |> assign(:loading, true)
+     |> load_filtered_records()}
   end
 
   # Modal event handlers
@@ -434,14 +454,15 @@ defmodule SertantaiWeb.RecordSelectionLive do
     search = socket.assigns.search
     page = socket.assigns.current_page
     page_size = socket.assigns.page_size
-
+    sort_by = socket.assigns.sort_by
+    sort_order = socket.assigns.sort_order
 
     # Only load records if a family is selected
     family = if filters["family"] != "", do: filters["family"], else: nil
     
     if family do
-      # Build query with filters and search
-      query = build_filtered_query(filters, search, page, page_size)
+      # Build query with filters, search, and sorting
+      query = build_filtered_query(filters, search, page, page_size, sort_by, sort_order)
 
       case Ash.read(query, domain: Sertantai.Domain) do
         {:ok, %{results: records, count: count}} ->
@@ -473,7 +494,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
     end
   end
 
-  defp build_filtered_query(filters, search, page, page_size) do
+  defp build_filtered_query(filters, search, page, page_size, sort_by, sort_order) do
     family = if filters["family"] != "", do: filters["family"], else: nil
     year = 
       case filters["year"] do
@@ -492,10 +513,35 @@ defmodule SertantaiWeb.RecordSelectionLive do
       search: if(search && search != "", do: search, else: nil)
     }
 
-
     UkLrt
     |> Ash.Query.for_read(:paginated, filter_args)
+    |> apply_sorting(sort_by, sort_order)
     |> Ash.Query.page(offset: (page - 1) * page_size, limit: page_size, count: true)
+  end
+
+  # Apply sorting to query based on sort field and direction
+  defp apply_sorting(query, sort_by, sort_order) do
+    require Ash.Query
+    
+    sort_order_atom = if sort_order == "desc", do: :desc, else: :asc
+    
+    case sort_by do
+      "family" ->
+        query |> Ash.Query.sort(family: sort_order_atom)
+      "title_en" ->
+        query |> Ash.Query.sort(title_en: sort_order_atom)
+      "year" ->
+        query |> Ash.Query.sort(year: sort_order_atom)
+      "number" ->
+        query |> Ash.Query.sort(number: sort_order_atom)
+      "type_code" ->
+        query |> Ash.Query.sort(type_code: sort_order_atom)
+      "live" ->
+        query |> Ash.Query.sort(live: sort_order_atom)
+      _ ->
+        # Default sort by family ascending
+        query |> Ash.Query.sort(family: :asc)
+    end
   end
 
   defp apply_filters(socket, params) do

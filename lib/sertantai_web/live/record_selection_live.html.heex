@@ -270,23 +270,119 @@
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Detail
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Family
+                <th
+                  phx-click="sort"
+                  phx-value-field="family"
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div class="flex items-center space-x-1">
+                    <span>Family</span>
+                    <%= if @sort_by == "family" do %>
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <%= if @sort_order == "asc" do %>
+                          <path d="M5 8l5-5 5 5H5z"/>
+                        <% else %>
+                          <path d="M15 12l-5 5-5-5h10z"/>
+                        <% end %>
+                      </svg>
+                    <% end %>
+                  </div>
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
+                <th
+                  phx-click="sort"
+                  phx-value-field="title_en"
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div class="flex items-center space-x-1">
+                    <span>Title</span>
+                    <%= if @sort_by == "title_en" do %>
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <%= if @sort_order == "asc" do %>
+                          <path d="M5 8l5-5 5 5H5z"/>
+                        <% else %>
+                          <path d="M15 12l-5 5-5-5h10z"/>
+                        <% end %>
+                      </svg>
+                    <% end %>
+                  </div>
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Year
+                <th
+                  phx-click="sort"
+                  phx-value-field="year"
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div class="flex items-center space-x-1">
+                    <span>Year</span>
+                    <%= if @sort_by == "year" do %>
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <%= if @sort_order == "asc" do %>
+                          <path d="M5 8l5-5 5 5H5z"/>
+                        <% else %>
+                          <path d="M15 12l-5 5-5-5h10z"/>
+                        <% end %>
+                      </svg>
+                    <% end %>
+                  </div>
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Number
+                <th
+                  phx-click="sort"
+                  phx-value-field="number"
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div class="flex items-center space-x-1">
+                    <span>Number</span>
+                    <%= if @sort_by == "number" do %>
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <%= if @sort_order == "asc" do %>
+                          <path d="M5 8l5-5 5 5H5z"/>
+                        <% else %>
+                          <path d="M15 12l-5 5-5-5h10z"/>
+                        <% end %>
+                      </svg>
+                    <% end %>
+                  </div>
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                <th
+                  phx-click="sort"
+                  phx-value-field="type_code"
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div class="flex items-center space-x-1">
+                    <span>Type</span>
+                    <%= if @sort_by == "type_code" do %>
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <%= if @sort_order == "asc" do %>
+                          <path d="M5 8l5-5 5 5H5z"/>
+                        <% else %>
+                          <path d="M15 12l-5 5-5-5h10z"/>
+                        <% end %>
+                      </svg>
+                    <% end %>
+                  </div>
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                <th
+                  phx-click="sort"
+                  phx-value-field="live"
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div class="flex items-center space-x-1">
+                    <span>Status</span>
+                    <%= if @sort_by == "live" do %>
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <%= if @sort_order == "asc" do %>
+                          <path d="M5 8l5-5 5 5H5z"/>
+                        <% else %>
+                          <path d="M15 12l-5 5-5-5h10z"/>
+                        <% end %>
+                      </svg>
+                    <% end %>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -340,8 +436,10 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <%= record.number %>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
-                    <%= record.type_code || record.type_desc %>
+                  <td class="px-6 py-4 text-sm text-gray-500 w-32 max-w-32" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
+                    <div class="break-words leading-tight">
+                      <%= record.type_code || record.type_desc %>
+                    </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <%= case format_status(record.live) do %>

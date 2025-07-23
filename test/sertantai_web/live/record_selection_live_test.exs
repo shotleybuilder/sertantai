@@ -615,6 +615,79 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
     end
   end
 
+  describe "Phase 1: Table Column Reorganization" do
+    @tag :phase1
+    test "displays table headers in correct order", %{conn: conn, user: user} do
+      authenticated_conn = conn |> assign(:current_user, user)
+      
+      {:ok, view, _html} = live(authenticated_conn, "/records")
+      
+      # Load some records by selecting a family that has data
+      render_change(view, :filter_change, %{filters: %{family: "💚 AGRICULTURE"}})
+      html = render(view)
+      
+      # Check header order: SELECT | DETAIL | FAMILY | TITLE | YEAR | NUMBER | TYPE | STATUS
+      # Note: DETAIL column will be added in Phase 6, so we check current order
+      assert html =~ ~r/Select.*Family.*Title.*Year.*Number.*Type.*Status/s
+    end
+
+    @tag :phase1
+    test "displays TITLE column with title_en field", %{conn: conn, user: user} do
+      authenticated_conn = conn |> assign(:current_user, user)
+      
+      {:ok, view, _html} = live(authenticated_conn, "/records")
+      # Use actual data that has title_en populated
+      render_change(view, :filter_change, %{filters: %{family: "💚 ENERGY"}})
+      html = render(view)
+      
+      # Should show title_en in a TITLE column (currently it shows Name)
+      # This test should fail initially as we're still showing 'name' in the Name column
+      assert html =~ "Renewable Heat Incentive Scheme Regulations"
+      # Column header should be "Title" not "Name" 
+      assert html =~ "Title"
+      refute html =~ "Name"
+    end
+
+    @tag :phase1
+    test "does not display law description in table", %{conn: conn, user: user} do
+      authenticated_conn = conn |> assign(:current_user, user)
+      
+      {:ok, view, _html} = live(authenticated_conn, "/records")
+      render_change(view, :filter_change, %{filters: %{family: "💚 ENERGY"}})
+      html = render(view)
+      
+      # Description should not be in table (it currently shows truncated descriptions)
+      # This test should pass initially as descriptions are already shown
+      refute html =~ "max-w-xs" # The CSS class used for truncated descriptions
+    end
+
+    @tag :phase1
+    test "displays TYPE column with type_code instead of type_desc", %{conn: conn, user: user} do
+      authenticated_conn = conn |> assign(:current_user, user)
+      
+      {:ok, view, _html} = live(authenticated_conn, "/records")
+      render_change(view, :filter_change, %{filters: %{family: "💚 ENERGY"}})
+      html = render(view)
+      
+      # Should show type_code (uksi), not type_desc (UK Statutory Instrument)
+      # This test should fail initially as we're showing type_desc 
+      assert html =~ "uksi"
+      refute html =~ "UK Statutory Instrument"
+    end
+
+    @tag :phase1
+    test "displays NUMBER column", %{conn: conn, user: user} do
+      authenticated_conn = conn |> assign(:current_user, user)
+      
+      {:ok, view, _html} = live(authenticated_conn, "/records")
+      render_change(view, :filter_change, %{filters: %{family: "💚 ENERGY"}})
+      html = render(view)
+      
+      # Should show number (2860 from the test data)
+      assert html =~ "2860"
+    end
+  end
+
   describe "error handling" do
     test "gracefully handles database connection issues", %{conn: conn, user: user} do
       authenticated_conn = conn |> assign(:current_user, user)

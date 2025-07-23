@@ -57,6 +57,36 @@ defmodule Sertantai.UkLrt do
       description "Type description"
     end
     
+    attribute :type_code, :string do
+      allow_nil? true
+      description "Type code classification"
+    end
+    
+    attribute :type_class, :string do
+      allow_nil? true
+      description "Type class classification"
+    end
+    
+    attribute :"2ndary_class", :string do
+      allow_nil? true
+      description "Secondary classification"
+    end
+    
+    attribute :live_description, :string do
+      allow_nil? true
+      description "Detailed live status description"
+    end
+    
+    attribute :acronym, :string do
+      allow_nil? true
+      description "Acronym for the record"
+    end
+    
+    attribute :old_style_number, :string do
+      allow_nil? true
+      description "Old style numbering format"
+    end
+    
     attribute :role, {:array, :string} do
       allow_nil? true
       description "Role information as array of strings"

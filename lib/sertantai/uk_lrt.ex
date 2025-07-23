@@ -190,7 +190,9 @@ defmodule Sertantai.UkLrt do
     read :paginated do
       description "Paginated read with optional filtering"
       argument :family, :string, allow_nil?: true
-      argument :family_ii, :string, allow_nil?: true
+      argument :year, :integer, allow_nil?: true
+      argument :type_code, :string, allow_nil?: true
+      argument :status, :string, allow_nil?: true
       argument :page_size, :integer, default: 20
       
       filter expr(
@@ -199,10 +201,20 @@ defmodule Sertantai.UkLrt do
         else
           family == ^arg(:family)
         end and
-        if is_nil(^arg(:family_ii)) do
+        if is_nil(^arg(:year)) do
           true
         else
-          family_ii == ^arg(:family_ii)
+          year == ^arg(:year)
+        end and
+        if is_nil(^arg(:type_code)) do
+          true
+        else
+          type_code == ^arg(:type_code)
+        end and
+        if is_nil(^arg(:status)) do
+          true
+        else
+          live == ^arg(:status)
         end
       )
       
@@ -220,6 +232,27 @@ defmodule Sertantai.UkLrt do
       
       prepare build(select: [:family_ii], distinct: [:family_ii])
       filter expr(not is_nil(family_ii))
+    end
+    
+    read :distinct_years do
+      description "Get distinct year values"
+      
+      prepare build(select: [:year], distinct: [:year])
+      filter expr(not is_nil(year))
+    end
+    
+    read :distinct_type_codes do
+      description "Get distinct type_code values"
+      
+      prepare build(select: [:type_code], distinct: [:type_code])
+      filter expr(not is_nil(type_code))
+    end
+    
+    read :distinct_statuses do
+      description "Get distinct live status values"
+      
+      prepare build(select: [:live], distinct: [:live])
+      filter expr(not is_nil(live))
     end
     
     read :for_sync do

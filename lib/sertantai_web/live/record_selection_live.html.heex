@@ -38,7 +38,7 @@
       </div>
       
       <div class={"px-6 py-4 #{unless @show_filters, do: "hidden"}"}>
-        <form phx-change="filter_change" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <form phx-change="filter_change" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Family Filter -->
           <div>
             <label for="family" class="block text-sm font-medium text-gray-700 mb-2">
@@ -49,34 +49,76 @@
               id="family"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
-              <option value="" selected={(@filters["family"] || "") == ""}>All Families</option>
+              <option value="" selected={if (@filters["family"] || "") == "", do: "selected", else: nil}>All Families</option>
               <%= for family <- @family_options do %>
-                <option value={family} selected={@filters["family"] == family}><%= family %></option>
+                <option value={family} selected={if @filters["family"] == family, do: "selected", else: nil}><%= family %></option>
               <% end %>
             </select>
           </div>
 
-          <!-- Family II Filter -->
+          <!-- Year Filter -->
           <div>
-            <label for="family_ii" class="block text-sm font-medium text-gray-700 mb-2">
-              Secondary Family
+            <label for="year" class="block text-sm font-medium text-gray-700 mb-2">
+              Year
             </label>
             <select 
-              name="filters[family_ii]" 
-              id="family_ii"
+              name="filters[year]" 
+              id="year"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
-              <option value="" selected={(@filters["family_ii"] || "") == ""}>All Secondary Families</option>
-              <%= for family_ii <- @family_ii_options do %>
-                <option value={family_ii} selected={@filters["family_ii"] == family_ii}><%= family_ii %></option>
+              <option value="" selected={if (@filters["year"] || "") == "", do: "selected", else: nil}>All Years</option>
+              <%= for year <- @year_options do %>
+                <option value={year} selected={if @filters["year"] == to_string(year), do: "selected", else: nil}><%= year %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <!-- Type Code Filter -->
+          <div>
+            <label for="type_code" class="block text-sm font-medium text-gray-700 mb-2">
+              Type Code
+            </label>
+            <select 
+              name="filters[type_code]" 
+              id="type_code"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option value="" selected={if (@filters["type_code"] || "") == "", do: "selected", else: nil}>All Types</option>
+              <%= for type_code <- @type_code_options do %>
+                <option value={type_code} selected={if @filters["type_code"] == type_code, do: "selected", else: nil}><%= type_code %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+              Status
+            </label>
+            <select 
+              name="filters[status]" 
+              id="status"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <%= if (@filters["status"] || "") == "" do %>
+                <option value="" selected>All Statuses</option>
+              <% else %>
+                <option value="">All Statuses</option>
+              <% end %>
+              <%= for status <- @status_options do %>
+                <%= if @filters["status"] == status do %>
+                  <option value={status} selected><%= status %></option>
+                <% else %>
+                  <option value={status}><%= status %></option>
+                <% end %>
               <% end %>
             </select>
           </div>
 
         </form>
         
-        <!-- Clear Filters action -->
-        <div class="px-6 py-4 border-t border-gray-200">
+        <!-- Clear Filters action (without separator line) -->
+        <div class="px-6 py-4">
           <button 
             type="button"
             phx-click="clear_filters"

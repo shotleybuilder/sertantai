@@ -49,9 +49,11 @@ defmodule SertantaiWeb.RecordSelectionLive do
                  |> assign(:total_count, 0)
                  |> assign(:current_page, 1)
                  |> assign(:page_size, @default_page_size)
-                 |> assign(:filters, %{family: "", family_ii: ""})
+                 |> assign(:filters, %{"family" => "", "year" => "", "type_code" => "", "status" => ""})
                  |> assign(:family_options, [])
-                 |> assign(:family_ii_options, [])
+                 |> assign(:year_options, [])
+                 |> assign(:type_code_options, [])
+                 |> assign(:status_options, [])
                  |> assign(:show_filters, true)
                  |> assign(:max_selections, 1000)  # Add selection limit
                  |> assign(:audit_context, audit_context)  # Store audit context
@@ -179,7 +181,7 @@ defmodule SertantaiWeb.RecordSelectionLive do
     # Clear filters and reset to initial state
     updated_socket = 
       socket
-      |> assign(:filters, %{family: "", family_ii: ""})
+      |> assign(:filters, %{family: "", year: "", type_code: "", status: ""})
       |> assign(:current_page, 1)
       |> assign(:records, [])
       |> assign(:total_count, 0)
@@ -263,7 +265,9 @@ defmodule SertantaiWeb.RecordSelectionLive do
 
         socket
         |> assign(:family_options, family_options)
-        |> load_family_ii_options()
+        |> load_year_options()
+        |> load_type_code_options()
+        |> load_status_options()
         # Don't load records initially - wait for family selection
 
       {:error, _error} ->
@@ -273,21 +277,57 @@ defmodule SertantaiWeb.RecordSelectionLive do
     end
   end
 
-  defp load_family_ii_options(socket) do
-    case Ash.read(UkLrt |> Ash.Query.for_read(:distinct_family_ii), domain: Sertantai.Domain) do
-      {:ok, family_ii_records} ->
-        family_ii_options = 
-          family_ii_records
-          |> Enum.map(& &1.family_ii)
+  defp load_year_options(socket) do
+    case Ash.read(UkLrt |> Ash.Query.for_read(:distinct_years), domain: Sertantai.Domain) do
+      {:ok, year_records} ->
+        year_options = 
+          year_records
+          |> Enum.map(& &1.year)
           |> Enum.reject(&is_nil/1)
-          |> Enum.sort()
+          |> Enum.sort(:desc)  # Most recent years first
 
-        assign(socket, :family_ii_options, family_ii_options)
+        assign(socket, :year_options, year_options)
 
       {:error, _error} ->
         socket
-        |> assign(:family_ii_options, [])
-        |> put_flash(:error, "Failed to load family_ii options")
+        |> assign(:year_options, [])
+        |> put_flash(:error, "Failed to load year options")
+    end
+  end
+
+  defp load_type_code_options(socket) do
+    case Ash.read(UkLrt |> Ash.Query.for_read(:distinct_type_codes), domain: Sertantai.Domain) do
+      {:ok, type_code_records} ->
+        type_code_options = 
+          type_code_records
+          |> Enum.map(& &1.type_code)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.sort()
+
+        assign(socket, :type_code_options, type_code_options)
+
+      {:error, _error} ->
+        socket
+        |> assign(:type_code_options, [])
+        |> put_flash(:error, "Failed to load type code options")
+    end
+  end
+
+  defp load_status_options(socket) do
+    case Ash.read(UkLrt |> Ash.Query.for_read(:distinct_statuses), domain: Sertantai.Domain) do
+      {:ok, status_records} ->
+        status_options = 
+          status_records
+          |> Enum.map(& &1.live)
+          |> Enum.reject(&(is_nil(&1) or &1 == ""))  # Filter out nil and empty strings
+          |> Enum.sort()
+
+        assign(socket, :status_options, status_options)
+
+      {:error, _error} ->
+        socket
+        |> assign(:status_options, [])
+        |> put_flash(:error, "Failed to load status options")
     end
   end
 
@@ -335,28 +375,33 @@ defmodule SertantaiWeb.RecordSelectionLive do
 
   defp build_filtered_query(filters, page, page_size) do
     family = if filters["family"] != "", do: filters["family"], else: nil
-    family_ii = if filters["family_ii"] != "", do: filters["family_ii"], else: nil
+    year = 
+      case filters["year"] do
+        "" -> nil
+        nil -> nil
+        year_str -> String.to_integer(year_str)
+      end
+    type_code = if filters["type_code"] != "", do: filters["type_code"], else: nil
+    status = if filters["status"] != "", do: filters["status"], else: nil
 
-    cond do
-      family && family_ii ->
-        UkLrt |> Ash.Query.for_read(:by_families, %{family: family, family_ii: family_ii})
+    filter_args = %{
+      family: family,
+      year: year,
+      type_code: type_code,
+      status: status
+    }
 
-      family ->
-        UkLrt |> Ash.Query.for_read(:by_family, %{family: family})
-
-      family_ii ->
-        UkLrt |> Ash.Query.for_read(:by_family_ii, %{family_ii: family_ii})
-
-      true ->
-        UkLrt |> Ash.Query.for_read(:read)
-    end
+    UkLrt
+    |> Ash.Query.for_read(:paginated, filter_args)
     |> Ash.Query.page(offset: (page - 1) * page_size, limit: page_size, count: true)
   end
 
   defp apply_filters(socket, params) do
     filters = %{
       "family" => params["family"] || "",
-      "family_ii" => params["family_ii"] || ""
+      "year" => params["year"] || "",
+      "type_code" => params["type_code"] || "",
+      "status" => params["status"] || ""
     }
     
     page = String.to_integer(params["page"] || "1")

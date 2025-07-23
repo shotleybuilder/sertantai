@@ -765,7 +765,7 @@ defmodule SertantaiWeb.CoreComponents do
       user.last_name ->
         user.last_name
       true ->
-        user.email |> String.split("@") |> List.first() |> String.capitalize()
+        user.email |> to_string() |> String.split("@") |> List.first() |> String.capitalize()
     end
   end
 end

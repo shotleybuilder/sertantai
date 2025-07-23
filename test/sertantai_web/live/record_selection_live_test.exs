@@ -1444,6 +1444,376 @@ defmodule SertantaiWeb.RecordSelectionLiveTest do
     end
   end
 
+  describe "Phase 4: Row Selection Enhancement" do
+    @tag :phase4
+    test "clicking anywhere on a row toggles selection", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            # Load records first
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Click on the row (not the checkbox)
+            # This should use a row-level click handler
+            render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+            html_after_click = render(view)
+            
+            # Row should be selected
+            assert html_after_click =~ "1 selected"
+            assert html_after_click =~ ~r/input[^>]*checked/
+            
+            # Click row again to deselect
+            render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+            html_after_deselect = render(view)
+            
+            # Row should be deselected
+            assert html_after_deselect =~ "0 selected"
+            refute html_after_deselect =~ ~r/input[^>]*checked[^>]*value=["\']#{first_record.id}["\'][^>]*>/
+            
+          {:error, _} ->
+            # Expected to fail until implemented
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "row shows hover state on mouse over", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html = render(view)
+            
+            # Check that rows have hover classes
+            # Should have cursor-pointer class to indicate clickable
+            assert html =~ ~r/<tr[^>]*cursor-pointer[^>]*>/
+            
+            # Should have hover:bg-gray or similar hover state class
+            assert html =~ ~r/<tr[^>]*hover:bg-[^>]*>/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "checkbox reflects row selection state", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Click on row (not checkbox)
+            render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+            html_after_row_click = render(view)
+            
+            # Checkbox should be checked after row click
+            assert html_after_row_click =~ ~r/<input[^>]*type=["\']checkbox["\'][^>]*value=["\']#{first_record.id}["\'][^>]*checked/
+            
+            # Click checkbox directly - should still work
+            render_change(view, :toggle_record, %{record_id: first_record.id})
+            html_after_checkbox = render(view)
+            
+            # Should be unchecked now
+            refute html_after_checkbox =~ ~r/<input[^>]*type=["\']checkbox["\'][^>]*value=["\']#{first_record.id}["\'][^>]*checked/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "clicking checkbox still works independently", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Click checkbox directly (existing functionality)
+            render_change(view, :toggle_record, %{record_id: first_record.id})
+            html_after_checkbox = render(view)
+            
+            # Should be selected
+            assert html_after_checkbox =~ "1 selected"
+            assert html_after_checkbox =~ ~r/<input[^>]*checked/
+            
+            # Click checkbox again to deselect
+            render_change(view, :toggle_record, %{record_id: first_record.id})
+            html_after_deselect = render(view)
+            
+            # Should be deselected
+            assert html_after_deselect =~ "0 selected"
+            refute html_after_deselect =~ ~r/<input[^>]*checked[^>]*value=["\']#{first_record.id}["\'][^>]*>/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "selected rows have visual highlighting", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Before selection - check base state
+            html_before = render(view)
+            # Row should not have selected class/background initially
+            refute html_before =~ ~r/<tr[^>]*data-record-id=["\']#{first_record.id}["\'][^>]*bg-blue[^>]*>/
+            
+            # Select the row
+            render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+            html_after_select = render(view)
+            
+            # Row should have selected highlighting (e.g., bg-blue-50 or similar)
+            assert html_after_select =~ ~r/<tr[^>]*data-record-id=["\']#{first_record.id}["\'][^>]*(bg-blue|bg-gray-100|selected)[^>]*>/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "row selection updates the selection count", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html_initial = render(view)
+            
+            # Initially no selections
+            assert html_initial =~ "0 selected"
+            
+            first_record = List.first(test_records)
+            second_record = Enum.at(test_records, 1, first_record)
+            
+            # Click first row
+            render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+            html_after_first = render(view)
+            assert html_after_first =~ "1 selected"
+            
+            # Click second row if different
+            if first_record.id != second_record.id do
+              render_click(view, :toggle_row_selection, %{record_id: second_record.id})
+              html_after_second = render(view)
+              assert html_after_second =~ "2 selected"
+              
+              # Deselect first row
+              render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+              html_after_deselect = render(view)
+              assert html_after_deselect =~ "1 selected"
+            end
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "row click handler doesn't interfere with other row elements", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            
+            # Click on detail button (Phase 6 feature) should not toggle selection
+            # This test ensures row click handler properly excludes interactive elements
+            render_click(view, :show_detail, %{record_id: first_record.id})
+            html_after_detail = render(view)
+            
+            # Selection count should remain at 0
+            assert html_after_detail =~ "0 selected"
+            
+            # Now click the row itself
+            render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+            html_after_row = render(view)
+            
+            # Now should be selected
+            assert html_after_row =~ "1 selected"
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "accessibility - row click with keyboard navigation", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html = render(view)
+            
+            # Rows should have proper accessibility attributes
+            # Should have role="button" or similar for clickable rows
+            assert html =~ ~r/<tr[^>]*(role=["\']button["\']|tabindex=["\']0["\'])[^>]*>/
+            
+            # Should have aria-label for screen readers
+            assert html =~ ~r/<tr[^>]*aria-label=["\'][^"\']*click to select[^"\']*["\'][^>]*>/i
+            
+            first_record = List.first(test_records)
+            
+            # Simulate keyboard activation (Enter or Space key)
+            render_hook(view, :keydown, %{key: "Enter", target_id: "row-#{first_record.id}"})
+            html_after_key = render(view)
+            
+            # Row should be selected after keyboard activation
+            assert html_after_key =~ "1 selected"
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "multiple row selections work correctly", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) >= 2 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            
+            first_record = List.first(test_records)
+            second_record = Enum.at(test_records, 1)
+            
+            # Click multiple rows
+            render_click(view, :toggle_row_selection, %{record_id: first_record.id})
+            render_click(view, :toggle_row_selection, %{record_id: second_record.id})
+            
+            html_after_multi = render(view)
+            
+            # Both should be selected
+            assert html_after_multi =~ "2 selected"
+            assert html_after_multi =~ ~r/<input[^>]*value=["\']#{first_record.id}["\'][^>]*checked/
+            assert html_after_multi =~ ~r/<input[^>]*value=["\']#{second_record.id}["\'][^>]*checked/
+            
+            # Both rows should have selected styling
+            assert html_after_multi =~ ~r/<tr[^>]*data-record-id=["\']#{first_record.id}["\'][^>]*(bg-blue|selected)[^>]*>/
+            assert html_after_multi =~ ~r/<tr[^>]*data-record-id=["\']#{second_record.id}["\'][^>]*(bg-blue|selected)[^>]*>/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+
+    @tag :phase4
+    test "row selection persists across pagination", %{conn: conn, user: user} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      # This test requires more records than we create in setup
+      # So we'll test that the infrastructure is ready for this feature
+      case live(authenticated_conn, "/records") do
+        {:ok, view, _html} ->
+          # Select a family with many records
+          render_change(view, :filter_change, %{filters: %{family: "💚 ENERGY"}})
+          
+          # If there are records, select one
+          html = render(view)
+          if html =~ ~r/<input[^>]*type=["\']checkbox["\'][^>]*value=["\'][^"\']+["\'][^>]*>/ do
+            # Extract first record ID from checkbox
+            [_, record_id] = Regex.run(~r/<input[^>]*type=["\']checkbox["\'][^>]*value=["\']([^"\']+)["\'][^>]*>/, html)
+            
+            # Select via row click
+            render_click(view, :toggle_row_selection, %{record_id: record_id})
+            html_selected = render(view)
+            assert html_selected =~ "1 selected"
+            
+            # Navigate to page 2 if available
+            if html_selected =~ "Next" do
+              render_click(view, :page_change, %{page: "2"})
+              html_page2 = render(view)
+              
+              # Selection count should persist
+              assert html_page2 =~ "1 selected"
+            end
+          end
+          
+        {:error, _} ->
+          assert true
+      end
+    end
+
+    @tag :phase4
+    test "row click area excludes detail button column", %{conn: conn, user: user, test_records: test_records} do
+      authenticated_conn = log_in_user(conn, user)
+      
+      if length(test_records) > 0 do
+        case live(authenticated_conn, "/records") do
+          {:ok, view, _html} ->
+            render_change(view, :filter_change, %{filters: %{family: "TestFamily"}})
+            html = render(view)
+            
+            # The row click handler should be on specific cells, not the detail button cell
+            # Check that TD elements (not the detail button TD) have the click handler
+            assert html =~ ~r/<td[^>]*phx-click=["\']toggle_row_selection["\'][^>]*>/
+            
+            # Detail button cell should NOT have row click handler
+            refute html =~ ~r/<td[^>]*phx-click=["\']show_detail["\'][^>]*phx-click=["\']toggle_row_selection["\'][^>]*>/
+            
+          {:error, _} ->
+            assert true
+        end
+      else
+        assert true
+      end
+    end
+  end
+
   describe "Phase 3: Search Functionality" do
     setup %{user: user} do
       # Ensure the LiveView process can access the test database

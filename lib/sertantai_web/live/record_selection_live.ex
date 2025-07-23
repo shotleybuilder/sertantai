@@ -139,6 +139,31 @@ defmodule SertantaiWeb.RecordSelectionLive do
     {:noreply, updated_socket}
   end
 
+  # Handle row click selection (Phase 4 enhancement)
+  def handle_event("toggle_row_selection", %{"record_id" => record_id}, socket) do
+    # Use the same logic as toggle_record but for row clicks
+    selected = socket.assigns.selected_records
+    max_selections = socket.assigns.max_selections
+    
+    updated_selected =
+      if MapSet.member?(selected, record_id) do
+        MapSet.delete(selected, record_id)
+      else
+        if MapSet.size(selected) >= max_selections do
+          selected  # Don't add if limit reached
+        else
+          MapSet.put(selected, record_id)
+        end
+      end
+
+    updated_socket = 
+      socket
+      |> assign(:selected_records, updated_selected)
+      |> persist_selections(updated_selected)
+
+    {:noreply, updated_socket}
+  end
+
   def handle_event("select_all_page", _params, socket) do
     current_record_ids = 
       socket.assigns.records
@@ -248,6 +273,24 @@ defmodule SertantaiWeb.RecordSelectionLive do
     else
       {:noreply, socket}
     end
+  end
+
+  # Handle keyboard activation for row selection (Phase 4 accessibility)
+  def handle_event("keydown", %{"key" => key, "target_id" => target_id}, socket) 
+      when key in ["Enter", " "] do
+    # Extract record ID from row target_id (format: "row-{record_id}")
+    case String.split(target_id, "row-") do
+      [_, record_id] ->
+        # Delegate to toggle_row_selection
+        handle_event("toggle_row_selection", %{"record_id" => record_id}, socket)
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  # Catch-all for other keydown events
+  def handle_event("keydown", _params, socket) do
+    {:noreply, socket}
   end
 
   def handle_event("export_csv", _params, socket) do

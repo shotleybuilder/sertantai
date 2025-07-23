@@ -52,7 +52,8 @@
                 type="text"
                 name="search"
                 value={@search}
-                placeholder="Search by title or number..."
+                placeholder="Search records"
+                phx-change="search_change"
                 phx-debounce="300"
                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
@@ -291,7 +292,18 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <%= for record <- @records do %>
-                <tr class={"hover:bg-gray-50 #{if is_selected?(@selected_records, record.id), do: "bg-blue-50"}"}>
+                <tr
+                  id={"row-#{record.id}"}
+                  data-record-id={record.id}
+                  class={"cursor-pointer hover:bg-gray-100 #{if is_selected?(@selected_records, record.id), do: "bg-blue-50 hover:bg-blue-100", else: "hover:bg-gray-50"}"}
+                  role="button"
+                  tabindex="0"
+                  aria-label={"Click to select record: #{record.title_en || record.name}"}
+                  phx-window-keydown="keydown"
+                  phx-key="enter"
+                  phx-key=" "
+                  phx-target={"#row-#{record.id}"}
+                >
                   <td class="px-6 py-4 whitespace-nowrap">
                     <input 
                       type="checkbox" 
@@ -312,26 +324,26 @@
                       <.icon name="hero-eye" class="h-5 w-5" />
                     </button>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
+                  <td class="px-6 py-4 whitespace-nowrap" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <div class="text-sm text-gray-900">
                       <%= record.family %>
                     </div>
                   </td>
-                  <td class="px-6 py-4 w-1/4 max-w-xs">
+                  <td class="px-6 py-4 w-1/4 max-w-xs" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <div class="text-sm font-medium text-gray-900 leading-tight">
                       <%= record.title_en || record.name %>
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <%= format_year(record.year) %>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <%= record.number %>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <%= record.type_code || record.type_desc %>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
+                  <td class="px-6 py-4 whitespace-nowrap" phx-click="toggle_row_selection" phx-value-record_id={record.id}>
                     <%= case format_status(record.live) do %>
                       <% {:ok, status} -> %>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">

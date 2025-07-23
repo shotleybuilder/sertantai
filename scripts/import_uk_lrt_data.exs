@@ -5,9 +5,9 @@ alias Sertantai.UkLrt
 
 # Create separate connection configs for Supabase (source) and Local (target)
 supabase_config = [
-  username: "postgres.laqakhlqqmakacqgwrnh",
-  password: System.get_env("SUPABASE_PASSWORD"),
-  hostname: "aws-0-eu-west-2.pooler.supabase.com",
+  username: "postgres.#{System.get_env("SUPABASE_PROJECT_ID")}",
+  password: System.get_env("SUPABASE_DB_PASSWORD"),
+  hostname: System.get_env("SUPABASE_POOLER_HOST"),
   database: "postgres",
   port: 6543,
   ssl: true,

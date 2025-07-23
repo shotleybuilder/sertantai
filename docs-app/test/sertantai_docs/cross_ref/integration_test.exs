@@ -1,6 +1,6 @@
 defmodule SertantaiDocs.CrossRef.IntegrationTest do
-  use ExUnit.Case, async: true
-  use SertantaiDocsWeb.ConnCase
+  use SertantaiDocsWeb.ConnCase, async: true
+  import Phoenix.LiveViewTest
 
   alias SertantaiDocs.CrossRef
   alias SertantaiDocs.MarkdownProcessor

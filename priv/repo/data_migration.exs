@@ -37,10 +37,10 @@ defmodule DataMigration do
   
   defp connect_to_supabase do
     Postgrex.start_link(
-      hostname: "aws-0-eu-west-2.pooler.supabase.com",
+      hostname: System.get_env("SUPABASE_POOLER_HOST"),
       port: 6543,
-      username: "postgres.laqakhlqqmakacqgwrnh",
-      password: System.get_env("SUPABASE_PASSWORD"),
+      username: "postgres.#{System.get_env("SUPABASE_PROJECT_ID")}",
+      password: System.get_env("SUPABASE_DB_PASSWORD"),
       database: "postgres",
       parameters: [pgbouncer: "true"],
       ssl: true,

@@ -59,6 +59,9 @@ defmodule SertantaiDocs.MixProject do
       {:mdex, "~> 0.7.5"},
       {:yaml_elixir, "~> 2.9"},
       
+      # Development tools
+      {:tidewave, "~> 0.1.10", only: [:dev, :test]},
+      
       # UI Components
       {:petal_components, "~> 3.0"},
       

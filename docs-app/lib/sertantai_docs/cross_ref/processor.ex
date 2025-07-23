@@ -169,7 +169,7 @@ defmodule SertantaiDocs.CrossRef.Processor do
         class
       end
       
-      html_replacement = ~s(<a href="#{url}" class="#{class}" data-ref-type="#{ref.type}" data-ref-target="#{ref.target}">#{ref.text}</a>)
+      html_replacement = ~s(<a href="#{url}" class="#{class}" data-ref-type="#{ref.type}" data-ref-target="#{ref.target}" data-preview-enabled="true" role="button" tabindex="0">#{ref.text}</a>)
       
       # Replace the cross-reference with the token
       pattern = ~r/\[#{Regex.escape(ref.text)}\]\(#{ref.type}:#{Regex.escape(ref.target)}\)/
@@ -212,7 +212,9 @@ defmodule SertantaiDocs.CrossRef.Processor do
     
     # Add custom MDEx options if provided
     mdex_opts = if Map.has_key?(opts, :mdex_options) do
-      deep_merge(mdex_opts, opts.mdex_options)
+      # If custom options are provided, use them directly
+      # (they should already be a properly formatted keyword list)
+      opts.mdex_options
     else
       mdex_opts
     end
@@ -347,13 +349,4 @@ defmodule SertantaiDocs.CrossRef.Processor do
     end
   end
 
-  defp deep_merge(map1, map2) do
-    Map.merge(map1, map2, fn _k, v1, v2 ->
-      if is_map(v1) and is_map(v2) do
-        deep_merge(v1, v2)
-      else
-        v2
-      end
-    end)
-  end
 end

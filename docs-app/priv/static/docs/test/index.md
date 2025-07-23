@@ -1,10 +1,10 @@
 ---
-title: "Test Documentation"
+title: "Test Docs"
 category: "test"
 description: "Testing various documentation features"
 ---
 
-# Test Documentation
+# Test Docs
 
 This section contains test pages for various documentation features.
 

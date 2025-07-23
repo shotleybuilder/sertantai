@@ -3,16 +3,15 @@
   <div class="flex-1 flex flex-col overflow-hidden">
     <!-- Top Header -->
     <header class="bg-white border-b border-gray-200">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center">
-            <h1 class="text-xl font-semibold text-gray-900">Sertantai Docs</h1>
-          </div>
-          <div class="flex items-center gap-4">
-            <a href="https://github.com/yourusername/sertantai" class="text-gray-500 hover:text-gray-700">
-              <.icon name="hero-code-bracket" class="h-5 w-5" />
-            </a>
-          </div>
+      <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+        <!-- Left space to account for sidebar width (approximately 256px) -->
+        <div class="flex items-center" style="margin-left: 256px;">
+          <.header_search_box class="w-80" />
+        </div>
+        <div class="flex items-center gap-4">
+          <a href="https://github.com/yourusername/sertantai" class="text-gray-500 hover:text-gray-700">
+            <.icon name="hero-code-bracket" class="h-5 w-5" />
+          </a>
         </div>
       </div>
     </header>

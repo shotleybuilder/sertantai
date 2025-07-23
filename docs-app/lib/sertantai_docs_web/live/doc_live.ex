@@ -43,7 +43,6 @@ defmodule SertantaiDocsWeb.DocLive do
       |> assign(:sort_state, initial_state.sort_state)
       |> assign(:available_sort_options, get_sort_options())
       |> load_page_content()
-      |> assign(:__layout__, {SertantaiDocsWeb.Layouts, :doc_live})
     
     {:ok, socket}
   end
@@ -51,7 +50,7 @@ defmodule SertantaiDocsWeb.DocLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="flex h-screen bg-white">
+    <div class="flex h-full bg-white">
       <!-- Sidebar Navigation with LiveView state -->
       <.nav_sidebar 
         items={@navigation_items}
@@ -63,24 +62,8 @@ defmodule SertantaiDocsWeb.DocLive do
         filtered_count={@filtered_count}
       />
       
-      <!-- Main Content Area -->
-      <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Header -->
-        <header class="bg-white border-b border-gray-200">
-          <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-              <div class="flex items-center">
-                <.header_search_box class="w-80" id_suffix="liveview" />
-              </div>
-              <div class="flex items-center gap-4">
-                <a href="https://github.com/yourusername/sertantai" class="text-gray-500 hover:text-gray-700">
-                  <.icon name="hero-code-bracket" class="h-5 w-5" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </header>
-        
+      <!-- Main Content Area (header is handled by app layout) -->
+      <div class="flex-1 flex flex-col overflow-hidden">        
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto">
           <div class="documentation-page">

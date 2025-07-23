@@ -89,6 +89,7 @@ defmodule SertantaiDocsWeb do
       import Phoenix.HTML
       # Core UI components
       import SertantaiDocsWeb.CoreComponents
+      import PetalComponents
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

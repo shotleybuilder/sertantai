@@ -204,19 +204,22 @@
                   Select
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                  Family
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Family
+                  Title
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Year
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Number
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Type
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
                 </th>
               </tr>
             </thead>
@@ -233,27 +236,23 @@
                     />
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">
-                      <%= record.name %>
-                    </div>
-                    <%= if record.md_description do %>
-                      <div class="text-sm text-gray-500 truncate max-w-xs">
-                        <%= String.slice(record.md_description, 0, 100) %><%= if String.length(record.md_description || "") > 100, do: "..." %>
-                      </div>
-                    <% end %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">
                       <%= record.family %>
                     </div>
-                    <%= if record.family_ii do %>
-                      <div class="text-sm text-gray-500">
-                        <%= record.family_ii %>
-                      </div>
-                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 w-1/4 max-w-xs">
+                    <div class="text-sm font-medium text-gray-900 leading-tight">
+                      <%= record.title_en || record.name %>
+                    </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <%= format_year(record.year) %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <%= record.number %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <%= record.type_code || record.type_desc %>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <%= case format_status(record.live) do %>
@@ -274,9 +273,6 @@
                           <%= status %>
                         </span>
                     <% end %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <%= record.type_desc %>
                   </td>
                 </tr>
               <% end %>

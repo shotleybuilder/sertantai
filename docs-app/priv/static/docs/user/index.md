@@ -13,6 +13,11 @@ Welcome to Sertantai! This guide will help you get started with using the platfo
 1. [Getting Started](getting-started.md)
 2. [Key Features](features.md)
 3. [Common Tasks](common-tasks.md)
+4. [Cross-Reference Links](cross-reference-links.md)
+
+## Documentation Features
+
+- **[Cross-Reference Links](cross-reference-links.md)** - Interactive linking system with hover previews
 
 ## What is Sertantai?
 

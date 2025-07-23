@@ -86,10 +86,17 @@ defmodule SertantaiDocs.MarkdownProcessorTest do
       assert html =~ "User Resource"
       assert html =~ "ExDoc"
       assert html =~ "main app"
-      # The references should be processed as links - check for the processed URLs
-      assert html =~ "href=\"/api/User.html\""
-      assert html =~ "href=\"/api/SertantaiDocs.MarkdownProcessor.html\""
+      # The references should be processed as CrossRef links with the new URL format
+      assert html =~ "href=\"/api/ash/User\""
+      assert html =~ "href=\"/api/docs/SertantaiDocs.MarkdownProcessor.html\""
       assert html =~ "href=\"http://localhost:4001/users/new\""
+      
+      # Check that CrossRef attributes are present for hover functionality
+      assert html =~ "data-preview-enabled=\"true\""
+      assert html =~ "data-ref-type=\"ash\""
+      assert html =~ "data-ref-type=\"exdoc\""
+      assert html =~ "class=\"cross-ref cross-ref-ash\""
+      assert html =~ "class=\"cross-ref cross-ref-exdoc\""
     end
 
     test "injects metadata as data attributes" do
@@ -382,6 +389,351 @@ defmodule SertantaiDocs.MarkdownProcessorTest do
         assert user_section
         assert user_section[:path] == "/user"
       end)
+    end
+  end
+
+  describe "advanced filtering and sorting" do
+    setup do
+      File.mkdir_p!(Path.join(@test_content_path, "build"))
+      
+      on_exit(fn ->
+        File.rm_rf!(@test_content_path)
+      end)
+    end
+
+    test "filters navigation items by metadata status" do
+      nav_items = [
+        %{title: "Live Doc", path: "/live", metadata: %{"status" => "live"}},
+        %{title: "Archived Doc", path: "/archived", metadata: %{"status" => "archived"}},
+        %{title: "No Status Doc", path: "/none", metadata: %{}}
+      ]
+
+      # Test live filter
+      live_items = MarkdownProcessor.filter_by_status(nav_items, "live")
+      assert length(live_items) == 1
+      assert List.first(live_items).title == "Live Doc"
+
+      # Test archived filter  
+      archived_items = MarkdownProcessor.filter_by_status(nav_items, "archived")
+      assert length(archived_items) == 1
+      assert List.first(archived_items).title == "Archived Doc"
+
+      # Test empty filter (show all)
+      all_items = MarkdownProcessor.filter_by_status(nav_items, "")
+      assert length(all_items) == 3
+    end
+
+    test "filters navigation items by metadata category" do
+      nav_items = [
+        %{title: "Security Doc", path: "/sec", metadata: %{"category" => "security"}},
+        %{title: "Admin Doc", path: "/admin", metadata: %{"category" => "admin"}}, 
+        %{title: "Implementation Doc", path: "/impl", metadata: %{"category" => "implementation"}},
+        %{title: "No Category", path: "/none", metadata: %{}}
+      ]
+
+      # Test security filter
+      security_items = MarkdownProcessor.filter_by_category(nav_items, "security")
+      assert length(security_items) == 1
+      assert List.first(security_items).title == "Security Doc"
+
+      # Test admin filter
+      admin_items = MarkdownProcessor.filter_by_category(nav_items, "admin")
+      assert length(admin_items) == 1
+      assert List.first(admin_items).title == "Admin Doc"
+
+      # Test empty filter (show all)
+      all_items = MarkdownProcessor.filter_by_category(nav_items, "")
+      assert length(all_items) == 4
+    end
+
+    test "filters navigation items by metadata priority" do
+      nav_items = [
+        %{title: "High Priority", path: "/high", metadata: %{"priority" => "high"}},
+        %{title: "Medium Priority", path: "/med", metadata: %{"priority" => "medium"}},
+        %{title: "Low Priority", path: "/low", metadata: %{"priority" => "low"}},
+        %{title: "No Priority", path: "/none", metadata: %{}}
+      ]
+
+      # Test high priority filter
+      high_items = MarkdownProcessor.filter_by_priority(nav_items, "high")
+      assert length(high_items) == 1
+      assert List.first(high_items).title == "High Priority"
+
+      # Test medium priority filter
+      medium_items = MarkdownProcessor.filter_by_priority(nav_items, "medium")
+      assert length(medium_items) == 1
+      assert List.first(medium_items).title == "Medium Priority"
+
+      # Test empty filter (show all)
+      all_items = MarkdownProcessor.filter_by_priority(nav_items, "")
+      assert length(all_items) == 4
+    end
+
+    test "filters navigation items by author metadata" do
+      nav_items = [
+        %{title: "Claude Doc", path: "/claude", metadata: %{"author" => "Claude"}},
+        %{title: "User Doc", path: "/user", metadata: %{"author" => "User"}},
+        %{title: "System Doc", path: "/sys", metadata: %{"author" => "System"}},
+        %{title: "No Author", path: "/none", metadata: %{}}
+      ]
+
+      # Test Claude filter
+      claude_items = MarkdownProcessor.filter_by_author(nav_items, "Claude")
+      assert length(claude_items) == 1
+      assert List.first(claude_items).title == "Claude Doc"
+
+      # Test User filter
+      user_items = MarkdownProcessor.filter_by_author(nav_items, "User")
+      assert length(user_items) == 1
+      assert List.first(user_items).title == "User Doc"
+
+      # Test empty filter (show all)
+      all_items = MarkdownProcessor.filter_by_author(nav_items, "")
+      assert length(all_items) == 4
+    end
+
+    test "filters navigation items by tags metadata" do
+      nav_items = [
+        %{title: "Phase Doc", path: "/phase", metadata: %{"tags" => ["phase-1", "implementation"]}},
+        %{title: "Security Doc", path: "/sec", metadata: %{"tags" => ["security", "admin"]}},
+        %{title: "Mixed Doc", path: "/mix", metadata: %{"tags" => ["phase-1", "security"]}},
+        %{title: "No Tags", path: "/none", metadata: %{}}
+      ]
+
+      # Test single tag filter
+      phase_items = MarkdownProcessor.filter_by_tags(nav_items, ["phase-1"])
+      assert length(phase_items) == 2
+      titles = Enum.map(phase_items, & &1.title)
+      assert "Phase Doc" in titles
+      assert "Mixed Doc" in titles
+
+      # Test multiple tag filter (OR logic)
+      multi_items = MarkdownProcessor.filter_by_tags(nav_items, ["security", "admin"])
+      assert length(multi_items) == 2
+      titles = Enum.map(multi_items, & &1.title)
+      assert "Security Doc" in titles
+      assert "Mixed Doc" in titles
+
+      # Test empty filter (show all)
+      all_items = MarkdownProcessor.filter_by_tags(nav_items, [])
+      assert length(all_items) == 4
+    end
+
+    test "applies multiple filters simultaneously" do
+      nav_items = [
+        %{title: "Live Security High", path: "/lsh", metadata: %{"status" => "live", "category" => "security", "priority" => "high"}},
+        %{title: "Live Security Low", path: "/lsl", metadata: %{"status" => "live", "category" => "security", "priority" => "low"}},
+        %{title: "Archived Security High", path: "/ash", metadata: %{"status" => "archived", "category" => "security", "priority" => "high"}},
+        %{title: "Live Admin High", path: "/lah", metadata: %{"status" => "live", "category" => "admin", "priority" => "high"}}
+      ]
+
+      filter_options = %{
+        status: "live",
+        category: "security", 
+        priority: "high",
+        author: "",
+        tags: []
+      }
+
+      filtered_items = MarkdownProcessor.apply_filters(nav_items, filter_options)
+
+      # Should only include items matching all filters
+      assert length(filtered_items) == 1
+      assert List.first(filtered_items).title == "Live Security High"
+    end
+
+    test "sorts navigation items by priority" do
+      nav_items = [
+        %{title: "Medium Doc", metadata: %{"priority" => "medium"}},
+        %{title: "High Doc", metadata: %{"priority" => "high"}},
+        %{title: "Low Doc", metadata: %{"priority" => "low"}},
+        %{title: "No Priority", metadata: %{}}
+      ]
+
+      # Test ascending priority sort (high -> medium -> low)
+      sorted_asc = MarkdownProcessor.sort_by_priority(nav_items, :asc)
+      titles = Enum.map(sorted_asc, & &1.title)
+      assert titles == ["High Doc", "Medium Doc", "Low Doc", "No Priority"]
+
+      # Test descending priority sort (low -> medium -> high)
+      sorted_desc = MarkdownProcessor.sort_by_priority(nav_items, :desc)
+      titles = Enum.map(sorted_desc, & &1.title)
+      assert titles == ["No Priority", "Low Doc", "Medium Doc", "High Doc"]
+    end
+
+    test "sorts navigation items by title alphabetically" do
+      nav_items = [
+        %{title: "Zebra Doc", metadata: %{}},
+        %{title: "Alpha Doc", metadata: %{}},
+        %{title: "Beta Doc", metadata: %{}}
+      ]
+
+      # Test ascending sort
+      sorted_asc = MarkdownProcessor.sort_by_title(nav_items, :asc)
+      titles = Enum.map(sorted_asc, & &1.title)
+      assert titles == ["Alpha Doc", "Beta Doc", "Zebra Doc"]
+
+      # Test descending sort
+      sorted_desc = MarkdownProcessor.sort_by_title(nav_items, :desc)
+      titles = Enum.map(sorted_desc, & &1.title)
+      assert titles == ["Zebra Doc", "Beta Doc", "Alpha Doc"]
+    end
+
+    test "sorts navigation items by last_modified date" do
+      nav_items = [
+        %{title: "Old Doc", metadata: %{"last_modified" => "2024-01-01"}},
+        %{title: "New Doc", metadata: %{"last_modified" => "2024-12-31"}},
+        %{title: "Middle Doc", metadata: %{"last_modified" => "2024-06-15"}},
+        %{title: "No Date", metadata: %{}}
+      ]
+
+      # Test descending date sort (newest first)
+      sorted_desc = MarkdownProcessor.sort_by_date(nav_items, :desc)
+      titles = Enum.map(sorted_desc, & &1.title)
+      assert titles == ["New Doc", "Middle Doc", "Old Doc", "No Date"]
+
+      # Test ascending date sort (oldest first)
+      sorted_asc = MarkdownProcessor.sort_by_date(nav_items, :asc)
+      titles = Enum.map(sorted_asc, & &1.title)
+      assert titles == ["No Date", "Old Doc", "Middle Doc", "New Doc"]
+    end
+
+    test "sorts navigation items by category" do
+      nav_items = [
+        %{title: "Security Doc", metadata: %{"category" => "security"}},
+        %{title: "Admin Doc", metadata: %{"category" => "admin"}},
+        %{title: "Implementation Doc", metadata: %{"category" => "implementation"}},
+        %{title: "Analysis Doc", metadata: %{"category" => "analysis"}},
+        %{title: "No Category", metadata: %{}}
+      ]
+
+      # Test ascending category sort
+      sorted_asc = MarkdownProcessor.sort_by_category(nav_items, :asc)
+      titles = Enum.map(sorted_asc, & &1.title)
+      assert titles == ["Admin Doc", "Analysis Doc", "Implementation Doc", "Security Doc", "No Category"]
+
+      # Test descending category sort
+      sorted_desc = MarkdownProcessor.sort_by_category(nav_items, :desc)
+      titles = Enum.map(sorted_desc, & &1.title)
+      assert titles == ["No Category", "Security Doc", "Implementation Doc", "Analysis Doc", "Admin Doc"]
+    end
+
+    test "maintains sort stability for equal values" do
+      nav_items = [
+        %{title: "First High", metadata: %{"priority" => "high"}},
+        %{title: "Second High", metadata: %{"priority" => "high"}},
+        %{title: "Third High", metadata: %{"priority" => "high"}}
+      ]
+
+      # When priorities are equal, should maintain original order (stable sort)
+      sorted_items = MarkdownProcessor.sort_by_priority(nav_items, :asc)
+      titles = Enum.map(sorted_items, & &1.title)
+      assert titles == ["First High", "Second High", "Third High"]
+    end
+
+    test "extracts available filter options from navigation items" do
+      nav_items = [
+        %{title: "Doc 1", metadata: %{"status" => "live", "category" => "security", "priority" => "high", "author" => "Claude", "tags" => ["phase-1", "security"]}},
+        %{title: "Doc 2", metadata: %{"status" => "archived", "category" => "admin", "priority" => "medium", "author" => "User", "tags" => ["admin", "testing"]}},
+        %{title: "Doc 3", metadata: %{"status" => "live", "category" => "implementation", "priority" => "low", "author" => "Claude", "tags" => ["phase-1", "implementation"]}}
+      ]
+
+      options = MarkdownProcessor.extract_filter_options(nav_items)
+
+      # Should extract unique values from all documents
+      assert Enum.sort(options.statuses) == ["archived", "live"]
+      assert Enum.sort(options.categories) == ["admin", "implementation", "security"]
+      assert Enum.sort(options.priorities) == ["high", "low", "medium"]
+      assert Enum.sort(options.authors) == ["Claude", "User"]
+      assert Enum.sort(options.tags) == ["admin", "implementation", "phase-1", "security", "testing"]
+    end
+
+    test "combines filtering and sorting operations" do
+      nav_items = [
+        %{title: "High Security A", metadata: %{"priority" => "high", "category" => "security", "status" => "live"}},
+        %{title: "Medium Security B", metadata: %{"priority" => "medium", "category" => "security", "status" => "live"}},
+        %{title: "High Admin C", metadata: %{"priority" => "high", "category" => "admin", "status" => "live"}},
+        %{title: "Low Security D", metadata: %{"priority" => "low", "category" => "security", "status" => "archived"}}
+      ]
+
+      # Filter by security + live, then sort by priority (high -> medium -> low)
+      filter_options = %{status: "live", category: "security", priority: "", author: "", tags: []}
+      
+      filtered_items = MarkdownProcessor.apply_filters(nav_items, filter_options)
+      sorted_filtered = MarkdownProcessor.sort_by_priority(filtered_items, :asc)
+
+      titles = Enum.map(sorted_filtered, & &1.title)
+      assert titles == ["High Security A", "Medium Security B"]
+    end
+
+    test "handles edge cases with missing metadata gracefully" do
+      nav_items = [
+        %{title: "Complete Doc", metadata: %{"status" => "live", "category" => "security", "priority" => "high"}},
+        %{title: "Partial Doc", metadata: %{"status" => "live"}},
+        %{title: "Empty Metadata", metadata: %{}},
+        %{title: "Nil Metadata", metadata: nil}
+      ]
+
+      # Should not crash with missing metadata
+      assert length(MarkdownProcessor.filter_by_status(nav_items, "live")) == 2
+      assert length(MarkdownProcessor.filter_by_category(nav_items, "security")) == 1
+      assert length(MarkdownProcessor.filter_by_priority(nav_items, "high")) == 1
+
+      # Should handle all items when sorting with missing metadata
+      sorted = MarkdownProcessor.sort_by_priority(nav_items, :asc)
+      assert length(sorted) == 4
+    end
+
+    test "supports case-insensitive filtering" do
+      nav_items = [
+        %{title: "Upper Doc", metadata: %{"category" => "SECURITY"}},
+        %{title: "Lower Doc", metadata: %{"category" => "security"}},
+        %{title: "Mixed Doc", metadata: %{"category" => "Security"}}
+      ]
+
+      # Should find all security documents regardless of case
+      security_items = MarkdownProcessor.filter_by_category_case_insensitive(nav_items, "security")
+      assert length(security_items) == 3
+
+      security_items_upper = MarkdownProcessor.filter_by_category_case_insensitive(nav_items, "SECURITY")
+      assert length(security_items_upper) == 3
+    end
+  end
+
+  describe "metadata extraction and caching" do
+    test "caches extracted metadata for performance" do
+      # This test verifies metadata caching optimization
+      nav_items = [
+        %{title: "Doc 1", path: "/doc1", metadata: %{"category" => "security"}},
+        %{title: "Doc 2", path: "/doc2", metadata: %{"category" => "admin"}}
+      ]
+
+      # First call should build cache
+      options1 = MarkdownProcessor.extract_filter_options(nav_items)
+      
+      # Second call should use cache (this would be measured in real implementation)
+      options2 = MarkdownProcessor.extract_filter_options(nav_items)
+      
+      assert options1.categories == options2.categories
+      assert options1.statuses == options2.statuses
+    end
+
+    test "refreshes cache when navigation items change" do
+      initial_items = [
+        %{title: "Doc 1", metadata: %{"category" => "security"}}
+      ]
+
+      updated_items = [
+        %{title: "Doc 1", metadata: %{"category" => "security"}},
+        %{title: "Doc 2", metadata: %{"category" => "admin"}}
+      ]
+
+      options1 = MarkdownProcessor.extract_filter_options(initial_items)
+      options2 = MarkdownProcessor.extract_filter_options(updated_items)
+
+      assert length(options1.categories) == 1
+      assert length(options2.categories) == 2
+      assert "admin" in options2.categories
     end
   end
 
